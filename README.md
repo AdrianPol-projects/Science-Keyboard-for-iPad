@@ -17,26 +17,46 @@ It is a **custom keyboard extension** inside a **container app**, written in Swi
   - `6.022e23 → 6.022 × 10²³`, `3/4 → ¾`, `U+2207 → ∇`, `-> → →`, `<=> → ⇌`
 - **Search every symbol by name** with 🔍 (over 7,000 characters, using their real Unicode names and LaTeX aliases).
 
-### Panels
-These are in the top bar, and the `ƒ` key toggles to the last one you used.
+### Autocorrect (English or Czech)
+- Pick **English**, **Čeština** or **Off** in the app's Settings, or tap the **EN/CZ** chip in the keyboard.
+- It uses the dictionaries built into iOS (`UITextChecker`) plus your own iOS text replacements. The bold suggestion is applied when you press space or punctuation, and backspace right after it undoes the correction.
+- Short words such as element symbols (Fe, Na), acronyms and words with digits are never corrected.
+- With Czech on, `ě š č ř ž ý á í é ů ň ť ď` come first in the long-press menus. There's an optional **QWERTZ** layout (automatic for Czech).
 
-| Panel | What's inside |
+### Panels
+The ⊞ button in the suggestion bar (or the `ƒ` key) opens the panels. Each panel has tabs.
+
+| Panel | Tabs |
 |---|---|
-| ★ Recents | Favorites (long-press any symbol to add one) and recently used symbols |
-| αβ Greek | Upper/lowercase, variants, bold/italic Greek, full Greek blocks |
-| ± Math | Operators, relations, sets, logic, brackets, fractions, geometry, function names, plus every math Unicode block |
-| ∫ Calculus | Integrals, ∂/∇, series, transforms |
-| → Arrows | Common arrows, harpoons/equilibria, all arrow blocks |
-| x² Super/Sub | Every super/subscript character, plus **x² / x₂ typing modes** |
-| x⃗ Accents | Combining marks (vector, hat, bar, dot…) |
-| 𝔸 Styles | 13 math alphabets (𝐛𝐨𝐥𝐝, 𝑖𝑡𝑎𝑙𝑖𝑐, 𝓈𝒸𝓇𝒾𝓅𝓉, 𝔣𝔯𝔞𝔨𝔱𝔲𝔯, 𝕕𝕠𝕦𝕓𝕝𝕖…) as typing modes or applied to a word |
-| ⚗︎ Chemistry | Tap-to-insert **periodic table**, an element action bar (name, nuclide, configuration, molar mass…), reaction arrows, charges, states, particles, common species, alchemical symbols, chemistry builders |
-| ⚛︎ Physics | 32 physical constants (tap for the symbol, `=` for the full value), units and SI prefixes, quantum/vector/EM symbols, physics builders |
-| ✦ Builders | 50+ step-by-step presets, plus any you create in the app |
-| 📋 Clipboard | History with pinning; save the clipboard; copy / cut / paste the selection |
-| ❝ Snippets | Reusable formulas (edit them in the app) |
-| 🧮 Tools | Scientific **calculator** (constants, DEG/RAD, inserts the result or `expr = result`), **converters** for the selection, last word or line, **Unicode hex input**, and **cursor tools** |
-| ℝ Letters, ◆ Shapes, U+ All Unicode | Letterlike symbols, unit squares, shapes, dingbats and 48 complete Unicode blocks |
+| ★ Favorites | Favorites (long-press any symbol to add one) and recently used symbols |
+| ∑ Symbols | Greek · Math · Calculus · Arrows · Super/Sub (with x² / x₂ typing modes) · Accents · Styles (13 math alphabets) · Letters · Shapes · All Unicode (48 blocks) |
+| ⚗︎ Chemistry | **Periodic table** (tap to type, plus an element action bar) · **Molar mass** calculator · Symbols · Builders |
+| ⚛︎ Physics | 32 constants (tap for the symbol, `=` for the full value) · Units · Symbols · Builders |
+| = Calculator | Scientific calculator: **Paste result**, **Paste equation** (`2+3 = 5`), **Paste ×10ⁿ**, or load the current line with **From text** |
+| 📋 Clipboard | **History**: tap an item to select it, then **Paste**, Pin or Delete. Also copy / cut / paste the selection · **Snippets** |
+| ✦ Builders | 53 step-by-step presets plus your own |
+| ⚙︎ Tools | Converters (selection, last word or line) · Unicode hex input · Cursor tools |
+
+### Molar mass calculator
+To build a formula, either:
+- tap elements on the periodic table and numbers, brackets and `·` on the keypad, or
+- type it with ⌨︎. Capitals are guessed (`h2so4 → H2SO4`, `nacl → NaCl`).
+
+**From text** takes the formula before the cursor.
+
+Choose:
+- **M** (g·mol⁻¹ or g/mol), **m** (u) or **Mᵣ**
+- precise, 1-decimal or whole-number atomic masses
+- the step style `2·1`, `2×1` or `2(1)`
+
+Then paste any of:
+- `18.015`
+- `18.015 g·mol⁻¹`
+- `M(H₂O) = 18.015 g·mol⁻¹`
+- `M(H₂O) = 2·1.008 + 15.999 = 18.015 g·mol⁻¹`
+- the full working with `2·M(H) + M(O)`
+
+With whole numbers and the `2(1)` style you get `M(H₂O) = 2(1) + 16 = 18 g·mol⁻¹`. Brackets, hydrates (`CuSO4·5H2O`) and charges are understood. The same calculator is in the app under **Molar mass**.
 
 ### Builders (presets)
 Builders fill in a notation one step at a time. The nuclide builder works like this:
@@ -62,11 +82,12 @@ The app's **Help & syntax** screen lists every function and modifier.
 - **Playground**: a text area to try the keyboard.
 - **Symbol browser**: search and copy symbols, and manage favorites.
 - **Periodic table**: element details with copyable notations.
+- **Molar mass**: the same calculator as the keyboard, with composition by mass.
 - **Builders**: run and edit presets.
 - **Snippets** and **Clipboard history**.
 - **Converter**: LaTeX, chemistry, units, scripts, math alphabets and combining marks.
 - **Calculator**.
-- **Settings**: haptics, clicks, flick mode, theme, accent, height, clipboard size and more.
+- **Settings**: language and autocorrect, letter layout, haptics, clicks, flick mode, theme, accent, height, clipboard size and more.
 
 ## Building on GitHub's Macs
 
@@ -131,6 +152,7 @@ Shared/                  Code compiled into both targets
   Elements.swift         118 elements, table layout, electron configurations
   Expression.swift       Calculator / template expression evaluator
   Converters.swift       Chemistry formatter, LaTeX → Unicode
+  MolarMass.swift        Formula parser and molar-mass report with worked steps
   Presets.swift          Builder engine + built-in library
   SymbolCatalog.swift    Symbol categories, Unicode blocks, physics data, search index
 Keyboard/                The keyboard extension (UIInputViewController + SwiftUI)
