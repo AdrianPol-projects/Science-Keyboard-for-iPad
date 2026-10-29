@@ -31,9 +31,14 @@ struct SNStatsView: View {
         let todosOpen = lines.filter { $0.trimmingCharacters(in: .whitespaces).hasPrefix("- [ ]") }.count
         let todosDone = lines.filter { $0.trimmingCharacters(in: .whitespaces).lowercased().hasPrefix("- [x]") }.count
         let images = raw.filter { $0 == "\u{FFFC}" }.count
-        let counts = Dictionary(grouping: words.map { $0.lowercased() }.filter { $0.count > 2 && !Self.stopWords.contains($0) }, by: { $0 })
-            .mapValues(\.count)
-            .sorted { $0.value == $1.value ? $0.key < $1.key : $0.value > $1.value }
+        var tally: [String: Int] = [:]
+        for word in words {
+            let w = word.lowercased()
+            if w.count > 2 && !Self.stopWords.contains(w) { tally[w, default: 0] += 1 }
+        }
+        let counts: [(key: String, value: Int)] = tally.sorted { (a: (key: String, value: Int), b: (key: String, value: Int)) -> Bool in
+            a.value == b.value ? a.key < b.key : a.value > b.value
+        }
         let longest = words.max { $0.count < $1.count } ?? "—"
 
         return Form {
@@ -214,7 +219,7 @@ struct SNFlashcardsView: View {
                     .padding(.horizontal)
                 ZStack {
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(flipped ? Color.accentColor.opacity(0.15) : Color(.secondarySystemBackground))
+                        .fill(flipped ? SwiftUI.Color.accentColor.opacity(0.15) : SwiftUI.Color(.secondarySystemBackground))
                         .shadow(radius: 4, y: 2)
                     Text(flipped ? deck[index].back : deck[index].front)
                         .font(.title)
@@ -245,7 +250,7 @@ struct SNFlashcardsView: View {
         }
         .padding(.top)
         .toolbar {
-            Button { load() } label: { Image(systemName: "shuffle") }
+            Button { load() } label: { SwiftUI.Image(systemName: "shuffle") }
         }
         .onAppear(perform: load)
     }
@@ -293,12 +298,12 @@ struct SNFocusView: View {
 
     var body: some View {
         VStack(spacing: 24) {
-            Text(onBreak ? "Break" : "Focus").font(.title2.weight(.semibold)).foregroundStyle(onBreak ? Color.green : Color.accentColor)
+            Text(onBreak ? "Break" : "Focus").font(.title2.weight(.semibold)).foregroundStyle(onBreak ? SwiftUI.Color.green : SwiftUI.Color.accentColor)
             ZStack {
-                Circle().stroke(Color.secondary.opacity(0.2), lineWidth: 16)
+                Circle().stroke(SwiftUI.Color.secondary.opacity(0.2), lineWidth: 16)
                 Circle()
                     .trim(from: 0, to: CGFloat(1 - Double(remaining) / Double(max(total, 1))))
-                    .stroke(onBreak ? Color.green : Color.accentColor, style: StrokeStyle(lineWidth: 16, lineCap: .round))
+                    .stroke(onBreak ? SwiftUI.Color.green : SwiftUI.Color.accentColor, style: StrokeStyle(lineWidth: 16, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                     .animation(.linear(duration: 1), value: remaining)
                 Text(String(format: "%02d:%02d", remaining / 60, remaining % 60))

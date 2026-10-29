@@ -271,9 +271,9 @@ struct SNToolkitView: View {
                             ForEach(tools) { tool in
                                 NavigationLink(value: tool) {
                                     HStack(spacing: 14) {
-                                        Image(systemName: tool.icon)
+                                        SwiftUI.Image(systemName: tool.icon)
                                             .font(.title3)
-                                            .foregroundStyle(Color.accentColor)
+                                            .foregroundStyle(SwiftUI.Color.accentColor)
                                             .frame(width: 32)
                                         VStack(alignment: .leading, spacing: 2) {
                                             Text(tool.title)

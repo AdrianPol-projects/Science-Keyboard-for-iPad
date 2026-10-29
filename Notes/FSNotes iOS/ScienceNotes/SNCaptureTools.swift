@@ -94,10 +94,10 @@ struct SNSketchView: View {
                         Toggle("Keep paper in image", isOn: $includePaper)
                         Button("Clear page", role: .destructive) { canvas.drawing = PKDrawing() }
                     } label: {
-                        Image(systemName: "slider.horizontal.3")
+                        SwiftUI.Image(systemName: "slider.horizontal.3")
                     }
-                    Button { canvas.undoManager?.undo() } label: { Image(systemName: "arrow.uturn.backward") }
-                    Button { canvas.undoManager?.redo() } label: { Image(systemName: "arrow.uturn.forward") }
+                    Button { canvas.undoManager?.undo() } label: { SwiftUI.Image(systemName: "arrow.uturn.backward") }
+                    Button { canvas.undoManager?.redo() } label: { SwiftUI.Image(systemName: "arrow.uturn.forward") }
                     Button("Insert") { insert() }
                         .buttonStyle(.borderedProminent)
                 }
@@ -232,7 +232,7 @@ struct SNScanView: View {
                     ScrollView(.horizontal) {
                         HStack {
                             ForEach(Array(pages.enumerated()), id: \.offset) { _, page in
-                                Image(uiImage: page).resizable().scaledToFit().frame(height: 160)
+                                SwiftUI.Image(uiImage: page).resizable().scaledToFit().frame(height: 160)
                                     .clipShape(RoundedRectangle(cornerRadius: 8))
                             }
                         }
@@ -295,7 +295,7 @@ struct SNPhotoTextView: View {
             }
             if let image {
                 Section {
-                    Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 220)
+                    SwiftUI.Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 220)
                 }
             }
             if working || !text.isEmpty {

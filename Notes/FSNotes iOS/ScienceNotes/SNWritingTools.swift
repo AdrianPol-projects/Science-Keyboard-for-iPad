@@ -544,7 +544,7 @@ struct SNQRView: View {
             }
             if let image {
                 Section {
-                    Image(uiImage: image).interpolation(.none).resizable().scaledToFit().frame(maxHeight: 260)
+                    SwiftUI.Image(uiImage: image).interpolation(.none).resizable().scaledToFit().frame(maxHeight: 260)
                     Button("Insert QR code") { context.insertImage(image, name: "qr") }
                         .buttonStyle(.borderedProminent)
                 }

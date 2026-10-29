@@ -246,7 +246,7 @@ struct SNPeriodicTableView: View {
                                     Button { selected = e } label: { SNElementTile(element: e) }
                                         .buttonStyle(.plain)
                                 } else {
-                                    Color.clear.frame(width: 52, height: 58)
+                                    SwiftUI.Color.clear.frame(width: 52, height: 58)
                                 }
                             }
                         }
@@ -296,7 +296,7 @@ struct SNElementTile: View {
         .padding(3)
         .frame(width: 52, height: 58)
         .background(RoundedRectangle(cornerRadius: 6)
-            .fill(Color(red: element.category.rgb.0, green: element.category.rgb.1, blue: element.category.rgb.2).opacity(0.85)))
+            .fill(SwiftUI.Color(red: element.category.rgb.0, green: element.category.rgb.1, blue: element.category.rgb.2).opacity(0.85)))
     }
 }
 
@@ -306,16 +306,16 @@ struct SNSymbolsView: View {
     @ObservedObject var context: SNContext
     @State private var categoryID = SymbolCatalog.all.first?.id ?? ""
 
-    private var category: SymbolCategory? { SymbolCatalog.category(categoryID) }
+    private var sections: [SymbolSection] { SymbolCatalog.category(categoryID)?.sections ?? [] }
 
     var body: some View {
         VStack(spacing: 0) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack {
                     ForEach(SymbolCatalog.all) { c in
-                        Button("\(c.glyph) \(c.title)") { categoryID = c.id }
-                            .buttonStyle(.bordered)
-                            .tint(c.id == categoryID ? Color.accentColor : Color.gray)
+                        SNCategoryChip(title: "\(c.glyph) \(c.title)", selected: c.id == categoryID) {
+                            categoryID = c.id
+                        }
                     }
                 }
                 .padding()
@@ -323,26 +323,13 @@ struct SNSymbolsView: View {
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 52), spacing: 8)], spacing: 8,
                           pinnedViews: [.sectionHeaders]) {
-                    ForEach(category?.sections ?? []) { section in
+                    ForEach(sections) { section in
                         Section {
                             ForEach(Array(section.items.enumerated()), id: \.offset) { _, item in
-                                Button {
-                                    context.insert(item, message: "Inserted \(item.displayForm)")
-                                } label: {
-                                    Text(item.displayForm)
-                                        .font(.system(size: item.count > 2 ? 14 : 24))
-                                        .lineLimit(1)
-                                        .minimumScaleFactor(0.4)
-                                        .frame(maxWidth: .infinity, minHeight: 48)
-                                        .background(RoundedRectangle(cornerRadius: 8).fill(Color(.secondarySystemBackground)))
-                                }
-                                .buttonStyle(.plain)
+                                SNSymbolCell(symbol: item, context: context)
                             }
                         } header: {
-                            Text(section.title).font(.headline)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(.vertical, 4)
-                                .background(.bar)
+                            SNSectionHeader(title: section.title)
                         }
                     }
                 }
@@ -350,6 +337,51 @@ struct SNSymbolsView: View {
                 .id(categoryID)
             }
         }
+    }
+}
+
+struct SNCategoryChip: View {
+    let title: String
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        let tint: SwiftUI.Color = selected ? .accentColor : .gray
+        Button(title, action: action)
+            .buttonStyle(.bordered)
+            .tint(tint)
+    }
+}
+
+struct SNSectionHeader: View {
+    let title: String
+
+    var body: some View {
+        Text(title)
+            .font(.headline)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 4)
+            .background(.bar)
+    }
+}
+
+struct SNSymbolCell: View {
+    let symbol: String
+    let context: SNContext
+
+    var body: some View {
+        let background: SwiftUI.Color = SwiftUI.Color(UIColor.secondarySystemBackground)
+        Button {
+            context.insert(symbol, message: "Inserted \(symbol.displayForm)")
+        } label: {
+            Text(symbol.displayForm)
+                .font(.system(size: symbol.count > 2 ? 14 : 24))
+                .lineLimit(1)
+                .minimumScaleFactor(0.4)
+                .frame(maxWidth: .infinity, minHeight: 48)
+                .background(RoundedRectangle(cornerRadius: 8).fill(background))
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -528,7 +560,7 @@ struct SNGraphView: View {
             chart.frame(width: 760, height: 440)
         }
         .padding(20)
-        .background(Color.white)
+        .background(SwiftUI.Color.white)
         .environment(\.colorScheme, .light)
         let renderer = ImageRenderer(content: content)
         renderer.scale = 2
