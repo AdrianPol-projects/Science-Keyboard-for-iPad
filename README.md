@@ -4,6 +4,8 @@ An over-the-top science keyboard for iPad (and iPhone). It looks like the iOS 18
 
 It is a **custom keyboard extension** inside a **container app**, written in SwiftUI. It needs iOS 17 or later.
 
+This repository also contains **Science Notes**, an iPad notes app built on the open-source [FSNotes](https://github.com/glushchenko/fsnotes) (MIT). It adds sketching, scanning with OCR, a calculator, molar mass, graphs, flashcards, a focus timer, templates and more. See [`Notes/SCIENCE_NOTES.md`](Notes/SCIENCE_NOTES.md). The **Build Notes app** workflow produces `ScienceNotes-unsigned.ipa`.
+
 ## Features
 
 ### Keyboard
