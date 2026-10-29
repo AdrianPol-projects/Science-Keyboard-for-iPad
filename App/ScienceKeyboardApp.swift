@@ -238,7 +238,7 @@ struct SetupView: View {
             }
 
             Section("Highlights") {
-                feature("square.grid.2x2", "Science menu", "The ⊞ button (or the ƒ key) opens 8 panels: Favorites, Symbols, Chemistry, Physics, Calculator, Clipboard, Builders and Tools."),
+                feature("square.grid.2x2", "Science menu", "The ⊞ button (or the ƒ key) opens 8 panels: Favorites, Symbols, Chemistry, Physics, Calculator, Clipboard, Builders and Tools.")
                 feature("text.badge.checkmark", "Autocorrect in English or Czech", "Pick the language in Settings or tap the EN/CZ chip. Suggestions also convert science: H2SO4 → H₂SO₄, \\alpha → α, m/s2 → m/s².")
                 feature("hand.draw", "Flick & long-press", "On iPad, swipe down on a key for its grey symbol (numbers or Greek). Long-press letters for accents and science variants.")
                 feature("atom", "Chemistry", "Periodic table, molar-mass calculator with worked steps, nuclide/decay/ion builders, electron configurations.")
