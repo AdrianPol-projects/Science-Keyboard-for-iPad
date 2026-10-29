@@ -84,7 +84,7 @@ struct KeyView: View {
     @State private var pressed = false
     @State private var flick = false
     @State private var showAlts = false
-    @State private var altIndex = 0
+    @State private var frame: CGRect = .zero
     @State private var longPress: DispatchWorkItem?
     @State private var repeatTimer: Timer?
     @State private var repeatCount = 0
@@ -93,7 +93,7 @@ struct KeyView: View {
 
     private var palette: KeyPalette { KeyPalette(scheme) }
     private var radius: CGFloat { pad ? 7 : 5 }
-    private var altCellWidth: CGFloat { max(min(size.width, 50), 36) }
+    private var popup: PopupModel { state.popup }
 
     var body: some View {
         if spec.kind == .spacer {
@@ -104,12 +104,18 @@ struct KeyView: View {
             cap
                 .frame(width: max(size.width, 0), height: size.height)
                 .contentShape(Rectangle())
+                .background(
+                    GeometryReader { g in
+                        Color.clear
+                            .onAppear { frame = g.frame(in: .named(KeyboardRootView.space)) }
+                            .onChange(of: g.frame(in: .named(KeyboardRootView.space))) { _, f in frame = f }
+                    }
+                )
                 .gesture(
-                    DragGesture(minimumDistance: 0)
+                    DragGesture(minimumDistance: 0, coordinateSpace: .named(KeyboardRootView.space))
                         .onChanged(changed)
                         .onEnded(ended)
                 )
-                .overlay(alignment: .bottom) { popups }
         }
     }
 
@@ -173,48 +179,8 @@ struct KeyView: View {
         }
     }
 
-    @ViewBuilder private var popups: some View {
-        if showAlts && !spec.alternates.isEmpty {
-            alternatesPopup
-        } else if pressed && !pad && spec.kind == .letter && spec.action != .space
-                    && state.settings.keyPopups && !cursorMode {
-            Text(spec.label)
-                .font(.system(size: 34))
-                .foregroundColor(palette.text)
-                .frame(width: size.width + 14, height: size.height * 1.15)
-                .background(
-                    RoundedRectangle(cornerRadius: 9, style: .continuous)
-                        .fill(palette.popup)
-                        .shadow(color: .black.opacity(0.28), radius: 2, y: 1)
-                )
-                .offset(y: -size.height - 4)
-                .allowsHitTesting(false)
-        }
-    }
-
-    private var alternatesPopup: some View {
-        let width = CGFloat(spec.alternates.count) * altCellWidth + 8
-        return HStack(spacing: 0) {
-            ForEach(Array(spec.alternates.enumerated()), id: \.offset) { i, alt in
-                Text(alt.displayForm)
-                    .font(.system(size: 22))
-                    .foregroundColor(i == altIndex ? .white : palette.text)
-                    .frame(width: altCellWidth, height: size.height)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(i == altIndex ? state.settings.accent.color : Color.clear)
-                    )
-            }
-        }
-        .padding(4)
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(palette.popup)
-                .shadow(color: .black.opacity(0.3), radius: 4, y: 2)
-        )
-        .fixedSize()
-        .offset(x: trailing ? -(width - size.width) / 2 : (width - size.width) / 2, y: -size.height - 6)
-        .allowsHitTesting(false)
+    private var wantsPreview: Bool {
+        !pad && spec.kind == .letter && spec.action != .space && state.settings.keyPopups
     }
 
     // MARK: Gestures
@@ -243,14 +209,12 @@ struct KeyView: View {
                 }
             }
         case .text:
-            if showAlts {
-                let n = spec.alternates.count
-                let popupWidth = CGFloat(n) * altCellWidth + 8
-                let origin = (trailing ? size.width - popupWidth : 0) + 4
-                let idx = Int(floor((value.location.x - origin) / altCellWidth))
-                let clamped = min(max(idx, 0), n - 1)
-                if clamped != altIndex { altIndex = clamped }
-            } else if pad, spec.secondary != nil, state.settings.flickMode != .off || spec.id == "comma" || spec.id == "period" {
+            if showAlts, let alts = popup.alternates {
+                let layout = PopupModel.layout(alts, in: popup.containerSize)
+                let idx = Int(floor((value.location.x - layout.frame.minX - 4) / layout.cell))
+                let clamped = min(max(idx, 0), alts.options.count - 1)
+                if clamped != alts.index { popup.alternates?.index = clamped }
+            } else if pad, spec.secondary != nil {
                 let isFlick = value.translation.height > 14
                 if isFlick != flick {
                     flick = isFlick
@@ -274,14 +238,16 @@ struct KeyView: View {
         case .shift:
             state.tapShift()
         case .text:
+            if wantsPreview { popup.preview = PopupModel.Preview(text: spec.label, keyFrame: frame) }
             if !spec.alternates.isEmpty {
                 let work = DispatchWorkItem {
-                    altIndex = 0
+                    popup.preview = nil
+                    popup.alternates = PopupModel.Alternates(options: spec.alternates, keyFrame: frame, trailing: trailing)
                     showAlts = true
                     state.feedback()
                 }
                 longPress = work
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.42, execute: work)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: work)
             }
         default:
             break
@@ -309,17 +275,18 @@ struct KeyView: View {
         cancelLongPress()
         repeatTimer?.invalidate()
         repeatTimer = nil
+        let chosen = popup.alternates.map { $0.options.indices.contains($0.index) ? $0.options[$0.index] : nil } ?? nil
         defer {
             pressed = false
             flick = false
             showAlts = false
             cursorMode = false
+            popup.alternates = nil
+            popup.preview = nil
         }
         if cursorMode { return }
         if showAlts {
-            if spec.alternates.indices.contains(altIndex) {
-                state.typeKey(spec.alternates[altIndex], literal: true)
-            }
+            if let c = chosen { state.typeKey(c, literal: true) }
             return
         }
         if flick, let sec = spec.secondary {
@@ -335,6 +302,60 @@ struct KeyView: View {
         case .dismiss: state.controller?.dismissKeyboard()
         case .backspace, .shift, .globe: break
         }
+    }
+}
+
+// MARK: - Pop-up overlay (drawn above everything, clamped inside the keyboard)
+
+struct PopupOverlay: View {
+    @ObservedObject var popup: PopupModel
+    let accent: Color
+    let pad: Bool
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let p = KeyPalette(scheme)
+        ZStack(alignment: .topLeading) {
+            Color.clear
+            if let preview = popup.preview {
+                let w = preview.keyFrame.width + 16
+                let h = min(preview.keyFrame.height * 1.15, 56)
+                Text(preview.text)
+                    .font(.system(size: 32))
+                    .foregroundColor(p.text)
+                    .frame(width: w, height: h)
+                    .background(
+                        RoundedRectangle(cornerRadius: 9, style: .continuous)
+                            .fill(p.popup)
+                            .shadow(color: .black.opacity(0.3), radius: 3, y: 1)
+                    )
+                    .offset(x: min(max(preview.keyFrame.midX - w / 2, 2), max(popup.containerSize.width - w - 2, 2)),
+                            y: max(2, preview.keyFrame.minY - h - 6))
+            }
+            if let alts = popup.alternates {
+                let layout = PopupModel.layout(alts, in: popup.containerSize)
+                HStack(spacing: 0) {
+                    ForEach(Array(alts.options.enumerated()), id: \.offset) { i, option in
+                        Text(option.displayForm)
+                            .font(.system(size: pad ? 24 : 22))
+                            .foregroundColor(i == alts.index ? .white : p.text)
+                            .frame(width: layout.cell, height: layout.frame.height - 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                    .fill(i == alts.index ? accent : Color.clear)
+                            )
+                    }
+                }
+                .padding(4)
+                .background(
+                    RoundedRectangle(cornerRadius: 11, style: .continuous)
+                        .fill(p.popup)
+                        .shadow(color: .black.opacity(0.35), radius: 6, y: 2)
+                )
+                .offset(x: layout.frame.minX, y: layout.frame.minY)
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
 
@@ -459,6 +480,7 @@ struct UtilityRow: View {
 extension KeyboardState {
     func layoutContext(pad: Bool) -> KeyboardLayouts.Context {
         KeyboardLayouts.Context(pad: pad, shift: shift, flick: settings.flickMode, needsGlobe: needsGlobe,
-                                returnLabel: returnLabel, returnPrimary: returnIsPrimary)
+                                returnLabel: returnLabel, returnPrimary: returnIsPrimary,
+                                qwertz: settings.usesQWERTZ, czech: settings.language == .czech)
     }
 }

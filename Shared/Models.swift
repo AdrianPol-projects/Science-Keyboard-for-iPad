@@ -30,6 +30,45 @@ enum FlickMode: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+enum TypingLanguage: String, Codable, CaseIterable, Identifiable {
+    case english, czech, off
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .english: return "English"
+        case .czech: return "Čeština"
+        case .off: return "Off"
+        }
+    }
+    var short: String {
+        switch self {
+        case .english: return "EN"
+        case .czech: return "CZ"
+        case .off: return "—"
+        }
+    }
+    /// Language prefix used to pick a UITextChecker language.
+    var checkerPrefix: String? {
+        switch self {
+        case .english: return "en"
+        case .czech: return "cs"
+        case .off: return nil
+        }
+    }
+}
+
+enum LetterLayout: String, Codable, CaseIterable, Identifiable {
+    case automatic, qwerty, qwertz
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .automatic: return "Automatic (QWERTZ for Czech)"
+        case .qwerty: return "QWERTY"
+        case .qwertz: return "QWERTZ"
+        }
+    }
+}
+
 enum KeyboardTheme: String, Codable, CaseIterable, Identifiable {
     case system, light, dark
     var id: String { rawValue }
@@ -57,13 +96,25 @@ struct KeyboardSettings: Codable, Equatable {
     var clipboardAutoCapture = true
     var clipboardLimit = 60
     var angleInDegrees = false
+    var language: TypingLanguage = .english
+    var autocorrect = true
+    var predictions = true
+    var letterLayout: LetterLayout = .automatic
+
+    var usesQWERTZ: Bool {
+        switch letterLayout {
+        case .automatic: return language == .czech
+        case .qwerty: return false
+        case .qwertz: return true
+        }
+    }
 
     init() {}
 
     private enum CodingKeys: String, CodingKey {
         case haptics, keyClicks, autoCapitalize, doubleSpacePeriod, smartSuggestions, flickMode
         case keyPopups, spaceCursorControl, heightScale, theme, accent, clipboardAutoCapture
-        case clipboardLimit, angleInDegrees
+        case clipboardLimit, angleInDegrees, language, autocorrect, predictions, letterLayout
     }
 
     // Tolerates missing keys so new settings never wipe old ones.
@@ -84,6 +135,10 @@ struct KeyboardSettings: Codable, Equatable {
         clipboardAutoCapture = try c.decodeIfPresent(Bool.self, forKey: .clipboardAutoCapture) ?? d.clipboardAutoCapture
         clipboardLimit = try c.decodeIfPresent(Int.self, forKey: .clipboardLimit) ?? d.clipboardLimit
         angleInDegrees = try c.decodeIfPresent(Bool.self, forKey: .angleInDegrees) ?? d.angleInDegrees
+        language = try c.decodeIfPresent(TypingLanguage.self, forKey: .language) ?? d.language
+        autocorrect = try c.decodeIfPresent(Bool.self, forKey: .autocorrect) ?? d.autocorrect
+        predictions = try c.decodeIfPresent(Bool.self, forKey: .predictions) ?? d.predictions
+        letterLayout = try c.decodeIfPresent(LetterLayout.self, forKey: .letterLayout) ?? d.letterLayout
     }
 }
 

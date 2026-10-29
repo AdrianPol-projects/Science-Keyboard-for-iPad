@@ -1,17 +1,25 @@
 import SwiftUI
 
 struct KeyboardRootView: View {
+    static let space = "keyboard"
     @ObservedObject var state: KeyboardState
 
     var body: some View {
         GeometryReader { geo in
             let pad = geo.size.width > 600
-            VStack(spacing: 0) {
-                TopBarView(state: state, pad: pad)
-                    .frame(height: pad ? 46 : 40)
-                content(pad: pad)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            ZStack(alignment: .top) {
+                VStack(spacing: 0) {
+                    TopBarView(state: state, pad: pad)
+                        .frame(height: pad ? 46 : 40)
+                    content(pad: pad)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+                StatusToast(state: state)
+                PopupOverlay(popup: state.popup, accent: state.settings.accent.color, pad: pad)
             }
+            .coordinateSpace(name: Self.space)
+            .onAppear { state.popup.containerSize = geo.size }
+            .onChange(of: geo.size) { _, size in state.popup.containerSize = size }
         }
         .tint(state.settings.accent.color)
     }
@@ -28,6 +36,31 @@ struct KeyboardRootView: View {
     }
 }
 
+/// Short-lived messages ("Copied", symbol names…) shown at the bottom of the keyboard.
+struct StatusToast: View {
+    @ObservedObject var state: KeyboardState
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        VStack {
+            Spacer()
+            if !state.status.isEmpty {
+                Text(state.status)
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(1)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 7)
+                    .background(Capsule().fill(.regularMaterial))
+                    .shadow(color: .black.opacity(0.15), radius: 4, y: 1)
+                    .padding(.bottom, 60)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: state.status)
+        .allowsHitTesting(false)
+    }
+}
+
 // MARK: - Top bar
 
 struct TopBarView: View {
@@ -39,7 +72,13 @@ struct TopBarView: View {
             switch state.sink {
             case .search?: SearchBar(state: state)
             case .wizardField?: WizardFieldBar(state: state)
-            case nil: NormalBar(state: state, pad: pad)
+            case .molar?: MolarFieldBar(state: state)
+            case nil:
+                if case .keys = state.screen {
+                    TypingBar(state: state, pad: pad)
+                } else {
+                    PanelBar(state: state, pad: pad)
+                }
             }
         }
         .padding(.horizontal, 6)
@@ -59,43 +98,97 @@ struct BarChip: View {
             Text(text)
                 .font(.system(size: 15, weight: selected || accent ? .semibold : .regular))
                 .lineLimit(1)
-                .padding(.horizontal, 10)
+                .padding(.horizontal, 11)
                 .padding(.vertical, 6)
                 .foregroundColor(selected ? .white : p.text)
                 .background(
                     Capsule().fill(selected ? Color.accentColor : (accent ? p.letter : p.chip))
                 )
+                .contentShape(Capsule())
         }
         .buttonStyle(.plain)
     }
 }
 
-struct NormalBar: View {
-    @ObservedObject var state: KeyboardState
-    let pad: Bool
-
-    private var onKeys: Bool {
-        if case .keys = state.screen { return true }
-        return false
-    }
+struct BarIconButton: View {
+    let icon: String
+    let action: () -> Void
 
     var body: some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 18, weight: .medium))
+                .frame(width: 38, height: 34)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+/// Shown while typing: science menu button, suggestion slots, language and search.
+struct TypingBar: View {
+    @ObservedObject var state: KeyboardState
+    let pad: Bool
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let p = KeyPalette(scheme)
         HStack(spacing: 6) {
+            BarIconButton(icon: "square.grid.2x2") {
+                state.feedback()
+                state.openPanel(state.lastPanel)
+            }
             if let mode = state.scriptMode {
                 BarChip(text: "\(mode.short) ✕", accent: true) { state.scriptMode = nil }
             }
             if let style = state.alphabet {
-                BarChip(text: "\(style.apply(to: "A")) \(style.title) ✕", accent: true) { state.alphabet = nil }
+                BarChip(text: "\(style.apply(to: "A")) ✕", accent: true) { state.alphabet = nil }
             }
-            if onKeys && !state.suggestions.isEmpty {
-                ForEach(state.suggestions) { s in
-                    BarChip(text: s.replacement, accent: true) { state.applySuggestion(s) }
+            HStack(spacing: 0) {
+                ForEach(Array(state.suggestions.enumerated()), id: \.element.id) { index, s in
+                    if index > 0 {
+                        Rectangle().fill(p.secondaryText.opacity(0.35)).frame(width: 1, height: 22)
+                    }
+                    Button {
+                        state.applySuggestion(s)
+                    } label: {
+                        Text(s.label)
+                            .font(.system(size: 17, weight: s.kind == .correction ? .semibold : .regular))
+                            .foregroundColor(p.text)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .padding(.horizontal, 8)
+                            .frame(maxWidth: .infinity, minHeight: 34)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(s.kind == .correction ? p.letter : Color.clear)
+                            )
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
-                Divider().frame(height: 22)
+                if state.suggestions.isEmpty { Spacer() }
             }
+            .frame(maxWidth: .infinity)
+            BarChip(text: state.settings.language.short) { state.cycleLanguage() }
+            BarIconButton(icon: "magnifyingglass") {
+                state.feedback()
+                state.beginSearch()
+            }
+        }
+    }
+}
+
+/// Shown in panels: the eight categories.
+struct PanelBar: View {
+    @ObservedObject var state: KeyboardState
+    let pad: Bool
+
+    var body: some View {
+        HStack(spacing: 6) {
+            BarChip(text: "ABC", accent: true) { state.showPage(.letters) }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 4) {
-                    BarChip(text: "ABC", selected: onKeys) { state.showPage(.letters) }
                     ForEach(PanelID.allCases) { panel in
                         BarChip(text: pad ? "\(panel.glyph) \(panel.title)" : panel.glyph,
                                 selected: state.screen == .panel(panel)) {
@@ -105,15 +198,10 @@ struct NormalBar: View {
                     }
                 }
             }
-            Button {
+            BarIconButton(icon: "magnifyingglass") {
                 state.feedback()
                 state.beginSearch()
-            } label: {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 17, weight: .medium))
-                    .frame(width: 34, height: 34)
             }
-            .buttonStyle(.plain)
         }
     }
 }
@@ -182,6 +270,36 @@ struct WizardFieldBar: View {
     }
 }
 
+struct MolarFieldBar: View {
+    @ObservedObject var state: KeyboardState
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let p = KeyPalette(scheme)
+        HStack(spacing: 8) {
+            Text("Formula:").font(.system(size: 13)).foregroundColor(p.secondaryText)
+            Text(state.buffer.isEmpty ? "type e.g. h2so4" : state.buffer + "▏")
+                .font(.system(size: 17, weight: .medium))
+                .foregroundColor(state.buffer.isEmpty ? p.secondaryText : p.text)
+                .lineLimit(1)
+            Spacer(minLength: 4)
+            Group {
+                switch state.molarReport {
+                case .success(let r):
+                    Text("\(state.molarKind.symbol) = \(r.totalText(state.molarPrecision))\(r.unit(state.molarKind, state.molarUnit))")
+                        .foregroundColor(p.text)
+                case .failure(let e):
+                    Text(state.buffer.isEmpty ? "" : e.localizedDescription).foregroundColor(.orange)
+                }
+            }
+            .font(.system(size: 15))
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            BarChip(text: "Done", accent: true) { state.closeSink() }
+        }
+    }
+}
+
 // MARK: - Panels
 
 struct PanelContainer: View {
@@ -189,68 +307,66 @@ struct PanelContainer: View {
     let panel: PanelID
     let pad: Bool
 
+    /// Panels with their own keypads don't need the space/return row.
+    private var showsUtilityRow: Bool {
+        switch panel {
+        case .calculator: return false
+        case .chemistry: return (state.tabs["chem"] ?? 0) >= 2
+        default: return true
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             panelBody
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            UtilityRow(state: state, pad: pad)
-                .frame(height: pad ? 50 : 44)
+            if showsUtilityRow {
+                UtilityRow(state: state, pad: pad)
+                    .frame(height: pad ? 50 : 44)
+            }
         }
     }
 
     @ViewBuilder private var panelBody: some View {
         switch panel {
         case .recents: RecentsPanel(state: state)
-        case .scripts: ScriptsPanel(state: state)
-        case .alphabets: AlphabetPanel(state: state)
+        case .symbols: SymbolsPanel(state: state)
         case .chemistry: ChemistryPanel(state: state, pad: pad)
         case .physics: PhysicsPanel(state: state)
-        case .presets: PresetsPanel(state: state)
+        case .calculator: CalculatorPanel(state: state, pad: pad)
         case .clipboard: ClipboardPanel(state: state)
-        case .snippets: SnippetsPanel(state: state)
+        case .builders: PresetsPanel(state: state)
         case .tools: ToolsPanel(state: state, pad: pad)
-        case .unicode: UnicodePanel(state: state)
-        case .math, .calculus:
-            SymbolCategoryPanel(state: state, category: panel.symbolCategory ?? SymbolCatalog.math, builderCategory: "Math")
-        default:
-            SymbolCategoryPanel(state: state, category: panel.symbolCategory ?? SymbolCatalog.greek, builderCategory: nil)
         }
     }
 }
 
+/// Header row of a panel: tabs on the left, optional actions on the right.
 struct PanelHeader<Trailing: View>: View {
     @ObservedObject var state: KeyboardState
-    let title: String
     var tabs: [String] = []
     var tabKey: String = ""
     @ViewBuilder var trailing: () -> Trailing
-    @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        let p = KeyPalette(scheme)
         HStack(spacing: 8) {
-            Text(title)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(p.text)
             if !tabs.isEmpty {
-                SegmentTabs(titles: tabs, selection: state.tabBinding(tabKey))
+                ScrollView(.horizontal, showsIndicators: false) {
+                    SegmentTabs(titles: tabs, selection: state.tabBinding(tabKey))
+                }
+            } else {
+                Spacer()
             }
-            Text(state.status)
-                .font(.system(size: 12))
-                .foregroundColor(p.secondaryText)
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .frame(maxWidth: .infinity, alignment: .trailing)
             trailing()
         }
-        .padding(.horizontal, 10)
-        .frame(height: 32)
+        .padding(.horizontal, 8)
+        .frame(height: 36)
     }
 }
 
 extension PanelHeader where Trailing == EmptyView {
-    init(state: KeyboardState, title: String, tabs: [String] = [], tabKey: String = "") {
-        self.init(state: state, title: title, tabs: tabs, tabKey: tabKey, trailing: { EmptyView() })
+    init(state: KeyboardState, tabs: [String] = [], tabKey: String = "") {
+        self.init(state: state, tabs: tabs, tabKey: tabKey, trailing: { EmptyView() })
     }
 }
 
@@ -291,6 +407,7 @@ struct SmallButton: View {
     let title: String
     var icon: String? = nil
     var selected = false
+    var enabled = true
     let action: () -> Void
 
     var body: some View {
@@ -304,10 +421,10 @@ struct SmallButton: View {
             .padding(.vertical, 6)
         }
         .buttonStyle(KeyCapButtonStyle(kind: .function, selected: selected, radius: 7))
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.4)
     }
 }
-
-// MARK: - Symbol grid
 
 struct SymbolCell: View {
     let symbol: String

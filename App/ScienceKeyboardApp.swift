@@ -88,7 +88,7 @@ final class AppModel: ObservableObject {
 }
 
 enum AppSection: String, CaseIterable, Identifiable, Hashable {
-    case setup, playground, symbols, periodic, builders, snippets, clipboard, converter, calculator, settings, help
+    case setup, playground, symbols, periodic, molar, builders, snippets, clipboard, converter, calculator, settings, help
 
     var id: String { rawValue }
 
@@ -98,6 +98,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
         case .playground: return "Playground"
         case .symbols: return "Symbol browser"
         case .periodic: return "Periodic table"
+        case .molar: return "Molar mass"
         case .builders: return "Builders"
         case .snippets: return "Snippets"
         case .clipboard: return "Clipboard history"
@@ -114,6 +115,7 @@ enum AppSection: String, CaseIterable, Identifiable, Hashable {
         case .playground: return "pencil.and.scribble"
         case .symbols: return "character.magnify"
         case .periodic: return "atom"
+        case .molar: return "scalemass"
         case .builders: return "wand.and.stars"
         case .snippets: return "text.quote"
         case .clipboard: return "doc.on.clipboard"
@@ -168,6 +170,7 @@ struct RootView: View {
         case .playground: PlaygroundView()
         case .symbols: SymbolBrowserView()
         case .periodic: PeriodicTableView()
+        case .molar: MolarMassView()
         case .builders: PresetListView()
         case .snippets: SnippetsView()
         case .clipboard: ClipboardHistoryView()
@@ -235,9 +238,10 @@ struct SetupView: View {
             }
 
             Section("Highlights") {
-                feature("function", "∑ key / top bar", "Jump between letters and 17 science panels. The bar also shows smart suggestions: type H2SO4, \\alpha, x^2, m/s2, 6.02e23 or -> and tap the suggestion.")
+                feature("square.grid.2x2", "Science menu", "The ⊞ button (or the ƒ key) opens 8 panels: Favorites, Symbols, Chemistry, Physics, Calculator, Clipboard, Builders and Tools."),
+                feature("text.badge.checkmark", "Autocorrect in English or Czech", "Pick the language in Settings or tap the EN/CZ chip. Suggestions also convert science: H2SO4 → H₂SO₄, \\alpha → α, m/s2 → m/s².")
                 feature("hand.draw", "Flick & long-press", "On iPad, swipe down on a key for its grey symbol (numbers or Greek). Long-press letters for accents and science variants.")
-                feature("atom", "Chemistry", "Periodic table, nuclide/decay/ion builders, formula formatting, electron configurations.")
+                feature("atom", "Chemistry", "Periodic table, molar-mass calculator with worked steps, nuclide/decay/ion builders, electron configurations.")
                 feature("wand.and.stars", "Builders", "Step-by-step presets — e.g. pick U, confirm Z = 92, A = 238 → ²³⁸₉₂U. Make your own in Builders.")
                 feature("doc.on.clipboard", "Clipboard & snippets", "History with pinning, copy/cut/paste selection, reusable snippets.")
                 feature("character.magnify", "Everything in Unicode", "Search 7 000+ symbols by name, browse 48 Unicode blocks or type a hex code point.")

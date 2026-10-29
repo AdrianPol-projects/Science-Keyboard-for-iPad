@@ -30,6 +30,20 @@ enum KeyboardLayouts {
         var needsGlobe: Bool
         var returnLabel: String
         var returnPrimary: Bool
+        var qwertz = false
+        var czech = false
+    }
+
+    /// Czech letters shown first on long-press when Czech is the typing language.
+    static let czechFirst: [String: [String]] = [
+        "a": ["á"], "c": ["č"], "d": ["ď"], "e": ["ě", "é"], "i": ["í"], "n": ["ň"], "o": ["ó"],
+        "r": ["ř"], "s": ["š"], "t": ["ť"], "u": ["ů", "ú"], "y": ["ý"], "z": ["ž"],
+    ]
+
+    static func alternatesList(for base: String, czech: Bool) -> [String] {
+        let list = alternates[base] ?? []
+        guard czech, let first = czechFirst[base] else { return list }
+        return first + list.filter { !first.contains($0) }
     }
 
     // iPad-style flick (swipe down) secondaries.
@@ -47,31 +61,31 @@ enum KeyboardLayouts {
 
     /// Long-press alternates: accents first, then science extras.
     static let alternates: [String: [String]] = [
-        "a": ["à", "á", "â", "ä", "æ", "ã", "å", "ā", "α", "∀", "Å"],
+        "a": ["á", "à", "â", "ä", "æ", "ã", "å", "ā", "α", "∀", "Å"],
         "b": ["β", "ℬ", "♭"],
         "c": ["ç", "ć", "č", "χ", "©", "℃", "ℂ"],
         "d": ["ď", "δ", "Δ", "∂", "ð", "∇"],
-        "e": ["è", "é", "ê", "ë", "ē", "ė", "ę", "ε", "∈", "∃", "ℯ"],
+        "e": ["é", "ě", "è", "ê", "ë", "ē", "ė", "ę", "ε", "∈", "∃", "ℯ"],
         "f": ["φ", "ƒ", "ϕ", "Φ", "℉"],
         "g": ["ğ", "γ", "Γ", "ℊ"],
         "h": ["ℏ", "η", "ħ", "ℋ", "ℍ"],
-        "i": ["ì", "í", "î", "ï", "ī", "į", "ι", "ı", "∞", "∫"],
+        "i": ["í", "ì", "î", "ï", "ī", "į", "ι", "ı", "∞", "∫"],
         "j": ["ĵ", "ξ", "ȷ"],
         "k": ["κ", "ϰ", "K"],
         "l": ["ł", "λ", "Λ", "ℓ", "ℒ"],
         "m": ["μ", "µ", "ℳ"],
         "n": ["ñ", "ń", "ň", "ν", "∇", "ℕ"],
-        "o": ["ò", "ó", "ô", "ö", "õ", "ø", "ō", "œ", "ω", "Ω", "°", "∘"],
+        "o": ["ó", "ò", "ô", "ö", "õ", "ø", "ō", "œ", "ω", "Ω", "°", "∘"],
         "p": ["π", "Π", "∏", "ψ", "Ψ", "℘", "ℙ", "¶"],
         "q": ["ℚ", "θ"],
         "r": ["ř", "ρ", "ϱ", "ℝ", "ℜ", "®"],
         "s": ["ß", "ś", "š", "ş", "σ", "Σ", "∑", "ς", "§"],
         "t": ["ť", "τ", "θ", "Θ", "ϑ", "†", "™"],
-        "u": ["ù", "ú", "û", "ü", "ū", "ů", "υ", "µ", "∪"],
+        "u": ["ú", "ů", "ù", "û", "ü", "ū", "υ", "µ", "∪"],
         "v": ["ν", "∨", "√"],
         "w": ["ω", "Ω", "ŵ"],
         "x": ["×", "χ", "ξ", "Ξ", "⊗"],
-        "y": ["ÿ", "ý", "ψ", "Ψ", "υ"],
+        "y": ["ý", "ÿ", "ψ", "Ψ", "υ"],
         "z": ["ž", "ź", "ż", "ζ", "ℤ"],
         "0": ["°", "∅", "⁰", "₀", "⊘"],
         "1": ["¹", "₁", "½", "⅓", "¼", "⅛"],
@@ -132,7 +146,7 @@ enum KeyboardLayouts {
             }
             return KeySpec(id: "r\(row)k\(idx)", action: .text(base), label: upper ? base.uppercased() : base,
                            secondary: secondary,
-                           alternates: caseAlternates(alternates[base] ?? [], upper: upper))
+                           alternates: caseAlternates(alternatesList(for: base, czech: ctx.czech), upper: upper))
         }
     }
 
@@ -215,9 +229,9 @@ enum KeyboardLayouts {
             switch page {
             case .letters:
                 return [
-                    letters("qwertyuiop", row: 0, ctx) + [backspace(1.5)],
+                    letters(ctx.qwertz ? "qwertzuiop" : "qwertyuiop", row: 0, ctx) + [backspace(1.5)],
                     [spacer("s1", 0.5)] + letters("asdfghjkl", row: 1, ctx) + [returnKey(2, ctx)],
-                    [shiftKey("lshift", 1.25, ctx)] + letters("zxcvbnm", row: 2, ctx)
+                    [shiftKey("lshift", 1.25, ctx)] + letters(ctx.qwertz ? "yxcvbnm" : "zxcvbnm", row: 2, ctx)
                         + [punct(",", "!", id: "comma", ctx), punct(".", "?", id: "period", ctx), shiftKey("rshift", 1.25, ctx)],
                     bottomRow(page, ctx),
                 ]
@@ -241,9 +255,9 @@ enum KeyboardLayouts {
         switch page {
         case .letters:
             return [
-                letters("qwertyuiop", row: 0, ctx),
+                letters(ctx.qwertz ? "qwertzuiop" : "qwertyuiop", row: 0, ctx),
                 [spacer("s1", 0.5)] + letters("asdfghjkl", row: 1, ctx) + [spacer("s2", 0.5)],
-                [shiftKey("lshift", 1.5, ctx)] + letters("zxcvbnm", row: 2, ctx) + [backspace(1.5)],
+                [shiftKey("lshift", 1.5, ctx)] + letters(ctx.qwertz ? "yxcvbnm" : "zxcvbnm", row: 2, ctx) + [backspace(1.5)],
                 bottomRow(page, ctx),
             ]
         case .numbers:

@@ -280,6 +280,20 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section {
+                Picker("Language", selection: $model.settings.language) {
+                    ForEach(TypingLanguage.allCases) { Text($0.title).tag($0) }
+                }
+                Toggle("Autocorrect (applied on space)", isOn: $model.settings.autocorrect)
+                Toggle("Word suggestions", isOn: $model.settings.predictions)
+                Picker("Letter layout", selection: $model.settings.letterLayout) {
+                    ForEach(LetterLayout.allCases) { Text($0.title).tag($0) }
+                }
+            } header: {
+                Text("Language & autocorrect")
+            } footer: {
+                Text(languageFooter)
+            }
             Section("Typing") {
                 Toggle("Auto-capitalization", isOn: $model.settings.autoCapitalize)
                 Toggle("“.” shortcut (double space)", isOn: $model.settings.doubleSpacePeriod)
@@ -332,6 +346,93 @@ struct SettingsView: View {
         }
         .navigationTitle("Keyboard settings")
     }
+
+    private var languageFooter: String {
+        var text = "Uses the dictionaries built into iOS, one language at a time. Tap the EN/CZ chip in the keyboard to switch quickly. Backspace right after a correction undoes it. Short words such as element symbols (Fe, Na) and words with digits are never corrected."
+        let lang = model.settings.language
+        if lang != .off, let prefix = lang.checkerPrefix,
+           !UITextChecker.availableLanguages.contains(where: { $0.hasPrefix(prefix) }) {
+            text += "\n⚠️ The \(lang.title) dictionary isn’t installed on this device. Add the language under Settings → General → Language & Region (or add the Czech system keyboard) so iOS downloads it."
+        }
+        return text
+    }
+}
+
+// MARK: - Molar mass
+
+struct MolarMassView: View {
+    @EnvironmentObject private var model: AppModel
+    @AppStorage("molarFormula") private var formula = "CuSO4.5H2O"
+    @State private var kind: MassKind = .molar
+    @State private var precision: MassPrecision = .precise
+    @State private var style: MultiplyStyle = .dot
+    @State private var unit: MassUnitStyle = .superscript
+
+    var body: some View {
+        Form {
+            Section {
+                TextField("Formula, e.g. H2O, Ca(OH)2, CuSO4.5H2O", text: $formula)
+                    .font(.title3.monospaced())
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+            } footer: {
+                Text("Brackets, hydrates (· or .), leading coefficients and charges are understood.")
+            }
+            Section("Options") {
+                Picker("Quantity", selection: $kind) {
+                    ForEach(MassKind.allCases) { Text($0.title).tag($0) }
+                }
+                Picker("Atomic masses", selection: $precision) {
+                    ForEach(MassPrecision.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                Picker("Steps", selection: $style) {
+                    ForEach(MultiplyStyle.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                if kind == .molar {
+                    Picker("Unit", selection: $unit) {
+                        ForEach(MassUnitStyle.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                }
+            }
+            switch MolarMass.report(formula) {
+            case .success(let r):
+                Section("Result — tap to copy") {
+                    copyRow("Value", r.totalText(precision))
+                    copyRow("With unit", r.totalText(precision) + r.unit(kind, unit))
+                    copyRow("Equation", r.equation(kind, precision, style, unit, steps: false))
+                    copyRow("With steps", r.equation(kind, precision, style, unit))
+                    copyRow("Full working", r.equation(kind, precision, style, unit, symbolic: true))
+                }
+                Section("Composition") {
+                    ForEach(Array(r.elements.enumerated()), id: \.offset) { _, item in
+                        let share = r.composition(precision).first { $0.0 == item.element.symbol }?.1 ?? 0
+                        LabeledContent("\(item.count) × \(item.element.name) (\(item.element.symbol))",
+                                       value: String(format: "%.2f %%", share))
+                    }
+                }
+            case .failure(let error):
+                Section {
+                    Text(error.localizedDescription).foregroundStyle(.orange)
+                }
+            }
+        }
+        .navigationTitle("Molar mass")
+    }
+
+    private func copyRow(_ title: String, _ text: String) -> some View {
+        Button {
+            model.copy(text)
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.caption).foregroundStyle(.secondary)
+                Text(text).font(.title3)
+            }
+        }
+        .foregroundStyle(.primary)
+    }
 }
 
 // MARK: - Help
@@ -340,8 +441,11 @@ struct HelpView: View {
     var body: some View {
         List {
             Section("Keyboard basics") {
-                help("Switching", "The top bar holds every panel. ∑ (function key) toggles between letters and your last panel. 🔍 searches every symbol by Unicode name.")
+                help("Switching", "While typing, the top bar shows word suggestions; ⊞ (or the ƒ key) opens the panels: Favorites, Symbols, Chemistry, Physics, Calculator, Clipboard, Builders, Tools. 🔍 searches every symbol by Unicode name.")
                 help("iPad flick keys", "Swipe down on a key to type its small grey symbol. Choose numbers or Greek in Settings.")
+                help("Autocorrect", "Choose English, Čeština or Off in Settings, or tap the EN/CZ chip. The bold suggestion is applied when you press space; backspace right after undoes it. Czech letters (ě š č ř ž ý á í é ů ň ť ď) are first in the long-press menus when Czech is on.")
+                help("Clipboard", "Clipboard → History: tap an item to select it, then tap Paste.")
+                help("Molar mass", "Chemistry → Molar mass: tap elements and numbers (or type with ⌨︎), then paste the value, the value with unit, or the full working, e.g. M(H₂O) = 2·1.008 + 15.999 = 18.015 g·mol⁻¹.")
                 help("Long-press", "Hold a letter, number or punctuation key for accents and science variants (e.g. d → ∂ δ Δ ∇). In panels, long-press a symbol to favorite it.")
                 help("Space bar trackpad", "Drag along the space bar to move the cursor.")
                 help("Delete", "Hold delete to repeat; after a moment it deletes whole words.")

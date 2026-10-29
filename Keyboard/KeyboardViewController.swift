@@ -40,6 +40,10 @@ final class KeyboardViewController: UIInputViewController {
         host.didMove(toParent: self)
         self.host = host
 
+        requestSupplementaryLexicon { [weak self] lexicon in
+            self?.state.autocorrector.setLexicon(lexicon)
+        }
+
         let h = view.heightAnchor.constraint(equalToConstant: preferredHeight())
         h.priority = UILayoutPriority(999)
         h.isActive = true
@@ -96,16 +100,13 @@ final class KeyboardViewController: UIInputViewController {
         let pad = traitCollection.userInterfaceIdiom == .pad && view.bounds.width != 0
             ? view.bounds.width > 600
             : traitCollection.userInterfaceIdiom == .pad
-        var base: CGFloat
+        // One fixed height for letters and panels: resizing the keyboard while a
+        // panel is open leaves lazy grids with unrendered (blank) cells.
+        let base: CGFloat
         if pad {
-            base = landscape ? 400 : 330
+            base = landscape ? 410 : 360
         } else {
-            base = landscape ? 205 : 268
-        }
-        // Panels (periodic table, builders, calculator…) get extra room.
-        switch state.screen {
-        case .keys: break
-        case .panel, .wizard: base += pad ? (landscape ? 40 : 90) : 30
+            base = landscape ? 210 : 280
         }
         return (base * CGFloat(state.settings.heightScale)).rounded()
     }

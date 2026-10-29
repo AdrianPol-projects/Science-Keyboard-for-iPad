@@ -1,42 +1,13 @@
 import SwiftUI
 
-// MARK: - Generic symbol panels
-
-struct SymbolCategoryPanel: View {
-    @ObservedObject var state: KeyboardState
-    let category: SymbolCategory
-    let builderCategory: String?
-
-    var body: some View {
-        VStack(spacing: 0) {
-            PanelHeader(state: state, title: category.title,
-                        tabs: builderCategory == nil ? [] : ["Symbols", "Builders"], tabKey: category.id)
-            if builderCategory != nil && state.tabs[category.id] == 1 {
-                PresetGrid(state: state, category: builderCategory)
-            } else {
-                SymbolGrid(state: state, sections: category.sections)
-            }
-        }
-    }
-}
-
-struct RecentsPanel: View {
-    @ObservedObject var state: KeyboardState
-
-    var body: some View {
-        VStack(spacing: 0) {
-            PanelHeader(state: state, title: "Recents & favorites") {
-                SmallButton(title: "Clear recents", icon: "trash") { state.clearRecents() }
-            }
-            if state.recents.isEmpty && state.favorites.isEmpty {
-                EmptyHint(text: "Symbols you insert show up here. Long-press any symbol to make it a favorite.")
-            } else {
-                SymbolGrid(state: state, sections: [
-                    SymbolSection(id: "fav", title: "Favorites", items: state.favorites),
-                    SymbolSection(id: "recent", title: "Recently used", items: state.recents),
-                ])
-            }
-        }
+extension KeyboardState {
+    /// Adapts an enum property to the Int selection used by SegmentTabs.
+    func indexBinding<T: CaseIterable & Equatable>(_ keyPath: ReferenceWritableKeyPath<KeyboardState, T>) -> Binding<Int>
+    where T.AllCases == [T] {
+        Binding(
+            get: { T.allCases.firstIndex(of: self[keyPath: keyPath]) ?? 0 },
+            set: { self[keyPath: keyPath] = T.allCases[$0] }
+        )
     }
 }
 
@@ -54,27 +25,76 @@ struct EmptyHint: View {
     }
 }
 
-struct ScriptsPanel: View {
+// MARK: - Favorites & recents
+
+struct RecentsPanel: View {
     @ObservedObject var state: KeyboardState
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(state: state, title: "Super/Sub") {
-                SmallButton(title: "Type x²", selected: state.scriptMode == .sup) {
-                    state.scriptMode = state.scriptMode == .sup ? nil : .sup
-                    if state.scriptMode != nil { state.showPage(.letters) }
-                }
-                SmallButton(title: "Type x₂", selected: state.scriptMode == .sub) {
-                    state.scriptMode = state.scriptMode == .sub ? nil : .sub
-                    if state.scriptMode != nil { state.showPage(.letters) }
-                }
+            PanelHeader(state: state) {
+                SmallButton(title: "Clear recents", icon: "trash") { state.clearRecents() }
             }
-            SymbolGrid(state: state, sections: SymbolCatalog.scripts.sections)
+            if state.recents.isEmpty && state.favorites.isEmpty {
+                EmptyHint(text: "Symbols you insert show up here. Long-press any symbol to make it a favorite.")
+            } else {
+                SymbolGrid(state: state, sections: [
+                    SymbolSection(id: "fav", title: "Favorites", items: state.favorites),
+                    SymbolSection(id: "recent", title: "Recently used", items: state.recents),
+                ].filter { !$0.items.isEmpty })
+            }
         }
     }
 }
 
-struct AlphabetPanel: View {
+// MARK: - Symbols
+
+struct SymbolsPanel: View {
+    @ObservedObject var state: KeyboardState
+
+    private var tab: SymbolTab {
+        let all = SymbolTab.allCases
+        return all[min(state.tabs["sym"] ?? 0, all.count - 1)]
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            PanelHeader(state: state, tabs: SymbolTab.allCases.map(\.title), tabKey: "sym")
+            switch tab {
+            case .scripts: ScriptsContent(state: state)
+            case .styles: AlphabetContent(state: state)
+            case .unicode: UnicodeContent(state: state)
+            default:
+                SymbolGrid(state: state, sections: tab.category?.sections ?? [])
+                    .id(tab.id)
+            }
+        }
+    }
+}
+
+struct ScriptsContent: View {
+    @ObservedObject var state: KeyboardState
+
+    var body: some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 6) {
+                Text("Type with letters as").font(.system(size: 12)).foregroundColor(.secondary)
+                SmallButton(title: "x² superscript", selected: state.scriptMode == .sup) { toggle(.sup) }
+                SmallButton(title: "x₂ subscript", selected: state.scriptMode == .sub) { toggle(.sub) }
+                Spacer()
+            }
+            .padding(.horizontal, 8)
+            SymbolGrid(state: state, sections: SymbolCatalog.scripts.sections)
+        }
+    }
+
+    private func toggle(_ style: ScriptStyle) {
+        state.scriptMode = state.scriptMode == style ? nil : style
+        if state.scriptMode != nil { state.showPage(.letters) }
+    }
+}
+
+struct AlphabetContent: View {
     @ObservedObject var state: KeyboardState
 
     private var sections: [SymbolSection] {
@@ -82,19 +102,27 @@ struct AlphabetPanel: View {
         let upper = SymbolCatalog.chars(style.apply(to: "ABCDEFGHIJKLMNOPQRSTUVWXYZ"))
         let lower = SymbolCatalog.chars(style.apply(to: "abcdefghijklmnopqrstuvwxyz"))
         let digits = SymbolCatalog.chars(style.apply(to: "0123456789"))
-        let greek = SymbolCatalog.chars(style.apply(to: "αβγδεζηθικλμνξοπρστυφχψωΓΔΘΛΞΠΣΦΨΩ"))
+        let greekPlain = "αβγδεζηθικλμνξοπρστυφχψωΓΔΘΛΞΠΣΦΨΩ"
+        let greek = SymbolCatalog.chars(style.apply(to: greekPlain))
         var out = [SymbolSection(id: "a.up", title: "\(style.title) A–Z", items: upper),
                    SymbolSection(id: "a.low", title: "\(style.title) a–z", items: lower)]
         if digits.joined() != "0123456789" { out.append(SymbolSection(id: "a.dig", title: "Digits", items: digits)) }
-        if greek.joined() != "αβγδεζηθικλμνξοπρστυφχψωΓΔΘΛΞΠΣΦΨΩ" {
-            out.append(SymbolSection(id: "a.greek", title: "Greek", items: greek))
-        }
+        if greek.joined() != greekPlain { out.append(SymbolSection(id: "a.greek", title: "Greek", items: greek)) }
         return out
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            PanelHeader(state: state, title: "Math styles") {
+        VStack(spacing: 4) {
+            HStack(spacing: 6) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 4) {
+                        ForEach(MathAlphabet.allCases) { style in
+                            BarChip(text: style.sample, selected: state.alphabetPreview == style) {
+                                state.alphabetPreview = style
+                            }
+                        }
+                    }
+                }
                 SmallButton(title: state.alphabet == state.alphabetPreview ? "Typing ✓" : "Type in style",
                             selected: state.alphabet == state.alphabetPreview) {
                     state.alphabet = state.alphabet == state.alphabetPreview ? nil : state.alphabetPreview
@@ -105,18 +133,37 @@ struct AlphabetPanel: View {
                     state.transform { style.apply(to: $0) }
                 }
             }
+            .padding(.horizontal, 8)
+            SymbolGrid(state: state, sections: sections)
+                .id(state.alphabetPreview.id)
+        }
+    }
+}
+
+struct UnicodeContent: View {
+    @ObservedObject var state: KeyboardState
+
+    var body: some View {
+        VStack(spacing: 4) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 4) {
-                    ForEach(MathAlphabet.allCases) { style in
-                        BarChip(text: style.sample, selected: state.alphabetPreview == style) {
-                            state.alphabetPreview = style
+                    ForEach(Array(SymbolCatalog.blocks.enumerated()), id: \.offset) { i, block in
+                        BarChip(text: block.name, selected: state.unicodeBlock == i) {
+                            state.unicodeBlock = i
                         }
                     }
                 }
                 .padding(.horizontal, 8)
             }
-            .frame(height: 36)
-            SymbolGrid(state: state, sections: sections)
+            .frame(height: 34)
+            let index = min(state.unicodeBlock, SymbolCatalog.blocks.count - 1)
+            let block = SymbolCatalog.blocks[index]
+            SymbolGrid(state: state, sections: [
+                SymbolSection(id: block.name,
+                              title: "\(block.name) · U+\(String(format: "%04X", block.range.lowerBound))–U+\(String(format: "%04X", block.range.upperBound))",
+                              items: state.blockItems(index)),
+            ])
+            .id(block.name)
         }
     }
 }
@@ -129,11 +176,13 @@ struct ChemistryPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(state: state, title: "Chemistry", tabs: ["Table", "Symbols", "Builders"], tabKey: "chem")
+            PanelHeader(state: state, tabs: ["Periodic table", "Molar mass", "Symbols", "Builders"], tabKey: "chem")
             switch state.tabs["chem"] ?? 0 {
             case 1:
-                SymbolGrid(state: state, sections: SymbolCatalog.chemistry.sections, minCell: 50)
+                MolarMassTool(state: state, pad: pad)
             case 2:
+                SymbolGrid(state: state, sections: SymbolCatalog.chemistry.sections, minCell: 50)
+            case 3:
                 PresetGrid(state: state, category: "Chemistry")
             default:
                 VStack(spacing: 4) {
@@ -142,9 +191,10 @@ struct ChemistryPanel: View {
                         state.selectedElement = element
                         state.feedback()
                         state.insertSymbol(element.symbol)
-                        state.status = "\(element.number) · \(element.name) · \(element.massText) · \(element.configuration)"
+                        state.status = "\(element.number) · \(element.name) · \(element.massText)"
                     }
                     .padding(.horizontal, 6)
+                    .padding(.bottom, 4)
                 }
             }
         }
@@ -165,30 +215,21 @@ struct ElementStrip: View {
                         .foregroundColor(p.text)
                     action("Name") { e.name }
                     action("Nuclide \(e.nuclide)") { e.nuclide }
-                    action("Isotope \(Scripts.superscript(String(e.massNumber)))\(e.symbol)") {
-                        Scripts.superscript(String(e.massNumber)) + e.symbol
-                    }
                     action("Config") { e.configuration }
-                    action("Full config") { e.fullConfiguration }
-                    action("M = \(e.massText)") { "M(\(e.symbol)) = \(e.massText.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))) g·mol⁻¹" }
-                    action("Z = \(e.number)") { String(e.number) }
+                    action("M = \(e.massText)") {
+                        "M(\(e.symbol)) = \(e.massText.trimmingCharacters(in: CharacterSet(charactersIn: "[]"))) g·mol⁻¹"
+                    }
                     SmallButton(title: "Nuclide builder…", icon: "wand.and.stars") {
                         if let preset = PresetLibrary.chemistry.first(where: { $0.id == "nuclide" }) {
                             state.startWizard(preset, element: e)
                         }
                     }
-                    SmallButton(title: "Ion…") {
-                        if let preset = PresetLibrary.chemistry.first(where: { $0.id == "ion" }) {
-                            state.startWizard(preset, element: e)
-                        }
-                    }
-                    SmallButton(title: "Decay…") {
-                        if let preset = PresetLibrary.chemistry.first(where: { $0.id == "alpha" }) {
-                            state.startWizard(preset, element: e)
-                        }
+                    SmallButton(title: "Add to molar mass") {
+                        state.molarInput += e.symbol
+                        state.tabs["chem"] = 1
                     }
                 } else {
-                    Text("Tap an element to insert its symbol — then use these buttons for name, nuclide, configuration…")
+                    Text("Tap an element to type its symbol. Then use these buttons for its name, nuclide, configuration…")
                         .font(.system(size: 12))
                         .foregroundColor(p.secondaryText)
                 }
@@ -213,18 +254,16 @@ struct PeriodicTableGrid: View {
     var body: some View {
         GeometryReader { geo in
             let spacing: CGFloat = 2
-            let w = max((geo.size.width - spacing * 17) / 18, 20)
-            let h = max((geo.size.height - spacing * 9) / 9.4, 18)
-            ScrollView([.horizontal, .vertical], showsIndicators: false) {
-                VStack(spacing: spacing) {
-                    ForEach(0..<10, id: \.self) { r in
-                        if r == 7 {
-                            Color.clear.frame(height: h * 0.4)
-                        } else {
-                            HStack(spacing: spacing) {
-                                ForEach(0..<18, id: \.self) { c in
-                                    cell(row: r, column: c, w: w, h: h)
-                                }
+            let w = max((geo.size.width - spacing * 17) / 18, 16)
+            let h = max((geo.size.height - spacing * 9) / 9.4, 14)
+            VStack(spacing: spacing) {
+                ForEach(0..<10, id: \.self) { r in
+                    if r == 7 {
+                        Color.clear.frame(height: h * 0.4)
+                    } else {
+                        HStack(spacing: spacing) {
+                            ForEach(0..<18, id: \.self) { c in
+                                cell(row: r, column: c, w: w, h: h)
                             }
                         }
                     }
@@ -243,19 +282,21 @@ struct PeriodicTableGrid: View {
                         Text("\(e.number)").font(.system(size: 8)).opacity(0.75)
                     }
                     Text(e.symbol)
-                        .font(.system(size: min(w, h) * 0.45, weight: .semibold))
+                        .font(.system(size: min(w * 0.5, h * 0.62), weight: .semibold))
                         .minimumScaleFactor(0.5)
+                        .lineLimit(1)
                 }
                 .foregroundColor(.black)
                 .frame(width: w, height: h)
                 .background(
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(e.category.color.opacity(selected?.number == e.number ? 1 : 0.78))
+                        .fill(e.category.color.opacity(selected?.number == e.number ? 1 : 0.8))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
                         .stroke(Color.primary, lineWidth: selected?.number == e.number ? 2 : 0)
                 )
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         } else if column == 2 && (row == 5 || row == 6) {
@@ -269,6 +310,125 @@ struct PeriodicTableGrid: View {
     }
 }
 
+struct MolarMassTool: View {
+    @ObservedObject var state: KeyboardState
+    let pad: Bool
+    @Environment(\.colorScheme) private var scheme
+
+    private let keypad: [[String]] = [["7", "8", "9", "⌫"], ["4", "5", "6", "("], ["1", "2", "3", ")"], ["0", "·", "C", "⌨︎"]]
+
+    var body: some View {
+        let p = KeyPalette(scheme)
+        VStack(spacing: 4) {
+            summary(p)
+            options
+            pasteRow
+            HStack(spacing: 8) {
+                PeriodicTableGrid { e in
+                    state.feedback()
+                    state.molarInput += e.symbol
+                }
+                VStack(spacing: 4) {
+                    ForEach(keypad, id: \.self) { row in
+                        HStack(spacing: 4) {
+                            ForEach(row, id: \.self) { key in
+                                Button {
+                                    if key == "⌨︎" { state.beginMolarTyping() } else { state.molarKey(key) }
+                                } label: {
+                                    Text(key)
+                                        .font(.system(size: 19))
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                }
+                                .buttonStyle(KeyCapButtonStyle(kind: key.first?.isNumber == true ? .letter : .function, radius: 6))
+                            }
+                        }
+                    }
+                }
+                .frame(width: pad ? 210 : 150)
+            }
+            .padding(.horizontal, 6)
+            .padding(.bottom, 4)
+        }
+    }
+
+    @ViewBuilder private func summary(_ p: KeyPalette) -> some View {
+        HStack(spacing: 10) {
+            if state.molarInput.isEmpty {
+                Text("Tap elements and numbers, e.g. H 2 O — or type it with ⌨︎")
+                    .font(.system(size: 14))
+                    .foregroundColor(p.secondaryText)
+            } else {
+                switch state.molarReport {
+                case .success(let r):
+                    Text(r.pretty).font(.system(size: 22, weight: .semibold)).foregroundColor(p.text)
+                    Text("= \(r.totalText(state.molarPrecision))\(r.unit(state.molarKind, state.molarUnit))")
+                        .font(.system(size: 20))
+                        .foregroundColor(p.text)
+                    Text(r.composition(state.molarPrecision).map { "\($0.0) \(String(format: "%.1f", $0.1)) %" }.joined(separator: " · "))
+                        .font(.system(size: 11))
+                        .foregroundColor(p.secondaryText)
+                        .lineLimit(1)
+                case .failure(let e):
+                    Text(state.molarInput).font(.system(size: 22)).foregroundColor(p.text)
+                    Text(e.localizedDescription).font(.system(size: 13)).foregroundColor(.orange)
+                }
+            }
+            Spacer(minLength: 4)
+            SmallButton(title: "From text", icon: "text.cursor") { state.useTokenAsFormula() }
+        }
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
+        .padding(.horizontal, 8)
+        .frame(height: 32)
+    }
+
+    private var options: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                SegmentTabs(titles: MassKind.allCases.map(\.title), selection: state.indexBinding(\.molarKind))
+                SegmentTabs(titles: MassPrecision.allCases.map(\.title), selection: state.indexBinding(\.molarPrecision))
+                SegmentTabs(titles: MultiplyStyle.allCases.map(\.title), selection: state.indexBinding(\.molarStyle))
+                if state.molarKind == .molar {
+                    SegmentTabs(titles: MassUnitStyle.allCases.map(\.title), selection: state.indexBinding(\.molarUnit))
+                }
+            }
+            .padding(.horizontal, 8)
+        }
+        .frame(height: 30)
+    }
+
+    @ViewBuilder private var pasteRow: some View {
+        if case .success(let r) = state.molarReport {
+            let k = state.molarKind
+            let pr = state.molarPrecision
+            let st = state.molarStyle
+            let u = state.molarUnit
+            let outputs = [
+                r.totalText(pr),
+                r.totalText(pr) + r.unit(k, u),
+                r.equation(k, pr, st, u, steps: false),
+                r.equation(k, pr, st, u),
+                r.equation(k, pr, st, u, symbolic: true),
+            ]
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    Text("Paste:").font(.system(size: 12)).foregroundColor(.secondary)
+                    ForEach(Array(outputs.enumerated()), id: \.offset) { _, text in
+                        SmallButton(title: text, selected: text == outputs[3]) {
+                            state.insertSymbol(text, record: false)
+                            state.status = "Pasted"
+                        }
+                    }
+                }
+                .padding(.horizontal, 8)
+            }
+            .frame(height: 34)
+        } else {
+            Color.clear.frame(height: 34)
+        }
+    }
+}
+
 // MARK: - Physics
 
 struct PhysicsPanel: View {
@@ -276,7 +436,7 @@ struct PhysicsPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(state: state, title: "Physics", tabs: ["Constants", "Units", "Symbols", "Builders"], tabKey: "phys")
+            PanelHeader(state: state, tabs: ["Constants", "Units", "Symbols", "Builders"], tabKey: "phys")
             switch state.tabs["phys"] ?? 0 {
             case 1: SymbolGrid(state: state, sections: PhysicsData.unitSections, minCell: 58)
             case 2: SymbolGrid(state: state, sections: SymbolCatalog.physics.sections, minCell: 50)
@@ -335,9 +495,10 @@ struct PresetsPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(state: state, title: "Builders", tabs: categories, tabKey: "presets")
-            let index = state.tabs["presets"] ?? 0
+            PanelHeader(state: state, tabs: categories, tabKey: "presets")
+            let index = min(state.tabs["presets"] ?? 0, categories.count - 1)
             PresetGrid(state: state, category: index == 0 ? nil : categories[index])
+                .id(index)
         }
     }
 }
@@ -520,20 +681,50 @@ struct NumericPad: View {
 
 struct ClipboardPanel: View {
     @ObservedObject var state: KeyboardState
+
+    var body: some View {
+        VStack(spacing: 0) {
+            PanelHeader(state: state, tabs: ["History", "Snippets"], tabKey: "clip") {
+                if (state.tabs["clip"] ?? 0) == 0 {
+                    SmallButton(title: "Save clipboard", icon: "square.and.arrow.down") { state.captureClipboard(force: true) }
+                    SmallButton(title: "Clear", icon: "trash") { state.clearClipboardHistory() }
+                }
+            }
+            if (state.tabs["clip"] ?? 0) == 1 {
+                SnippetsGrid(state: state)
+            } else {
+                ClipboardHistory(state: state)
+            }
+        }
+    }
+}
+
+struct ClipboardHistory: View {
+    @ObservedObject var state: KeyboardState
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let p = KeyPalette(scheme)
-        VStack(spacing: 0) {
-            PanelHeader(state: state, title: "Clipboard") {
-                SmallButton(title: "Save clipboard", icon: "square.and.arrow.down") { state.captureClipboard(force: true) }
-                SmallButton(title: "Copy sel.", icon: "doc.on.doc") { state.saveSelection() }
+        let selected = state.selectedClipItem
+        VStack(spacing: 4) {
+            HStack(spacing: 6) {
+                SmallButton(title: "Paste", icon: "doc.on.clipboard.fill", selected: selected != nil, enabled: selected != nil) {
+                    state.pasteSelectedClip()
+                }
+                SmallButton(title: selected?.pinned == true ? "Unpin" : "Pin", icon: "pin", enabled: selected != nil) {
+                    if let s = selected { state.togglePin(s) }
+                }
+                SmallButton(title: "Delete", icon: "trash", enabled: selected != nil) {
+                    if let s = selected { state.deleteClip(s) }
+                }
+                Spacer(minLength: 4)
+                SmallButton(title: "Copy", icon: "doc.on.doc") { state.saveSelection() }
                 SmallButton(title: "Cut", icon: "scissors") { state.cutSelection() }
-                SmallButton(title: "Paste", icon: "doc.on.clipboard") { state.pasteSystemClipboard() }
-                SmallButton(title: "Clear", icon: "trash") { state.clearClipboardHistory() }
+                SmallButton(title: "Paste system", icon: "clipboard") { state.pasteSystemClipboard() }
             }
+            .padding(.horizontal, 8)
             if !state.hasFullAccess {
-                Text("Clipboard history needs “Allow Full Access” (Settings → General → Keyboard → Keyboards → Science Keyboard). Without it you can still use items saved from the app.")
+                Text("Turn on “Allow Full Access” (Settings → General → Keyboard → Keyboards → Science Keyboard) to save what you copy.")
                     .font(.system(size: 12))
                     .foregroundColor(p.secondaryText)
                     .padding(.horizontal, 10)
@@ -544,7 +735,9 @@ struct ClipboardPanel: View {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 6)], spacing: 6) {
                         ForEach(state.clipboard) { item in
-                            ClipCard(item: item, state: state)
+                            ClipCard(item: item, selected: item.id == state.selectedClip) {
+                                state.selectClip(item)
+                            }
                         }
                     }
                     .padding(8)
@@ -556,37 +749,24 @@ struct ClipboardPanel: View {
 
 struct ClipCard: View {
     let item: ClipItem
-    let state: KeyboardState
+    let selected: Bool
+    let onTap: () -> Void
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let p = KeyPalette(scheme)
         VStack(alignment: .leading, spacing: 4) {
-            Button {
-                state.feedback()
-                state.insertSymbol(item.text, record: false)
-            } label: {
-                Text(item.text)
-                    .font(.system(size: 14))
-                    .lineLimit(3)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
-            }
-            .buttonStyle(.plain)
-            HStack(spacing: 10) {
-                Text(item.date, style: .relative)
-                    .font(.system(size: 10))
-                    .foregroundColor(p.secondaryText)
+            Text(item.text)
+                .font(.system(size: 14))
+                .lineLimit(3)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
+            HStack(spacing: 6) {
+                if item.pinned { Image(systemName: "pin.fill").font(.system(size: 10)) }
+                Text(item.date, style: .relative).font(.system(size: 10))
                 Spacer()
-                Button { state.togglePin(item) } label: {
-                    Image(systemName: item.pinned ? "pin.fill" : "pin")
-                }
-                Button { state.deleteClip(item) } label: {
-                    Image(systemName: "trash")
-                }
+                if selected { Image(systemName: "checkmark.circle.fill").foregroundColor(.accentColor) }
             }
-            .font(.system(size: 13))
-            .buttonStyle(.plain)
             .foregroundColor(p.secondaryText)
         }
         .padding(8)
@@ -596,40 +776,127 @@ struct ClipCard: View {
                 .fill(p.letter)
                 .shadow(color: p.shadow, radius: 0, y: 1)
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.accentColor, lineWidth: selected ? 2.5 : 0)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onTap)
     }
 }
 
-struct SnippetsPanel: View {
+struct SnippetsGrid: View {
     @ObservedObject var state: KeyboardState
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let p = KeyPalette(scheme)
-        VStack(spacing: 0) {
-            PanelHeader(state: state, title: "Snippets")
-            ScrollView {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 6)], spacing: 6) {
-                    ForEach(state.snippets) { snippet in
-                        Button {
-                            state.feedback()
-                            state.insertSymbol(snippet.text, record: false)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(snippet.title).font(.system(size: 11)).foregroundColor(p.secondaryText)
-                                Text(snippet.text).font(.system(size: 16)).lineLimit(2).minimumScaleFactor(0.6)
-                            }
-                            .padding(8)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+        ScrollView {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 180), spacing: 6)], spacing: 6) {
+                ForEach(state.snippets) { snippet in
+                    Button {
+                        state.feedback()
+                        state.insertSymbol(snippet.text, record: false)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(snippet.title).font(.system(size: 11)).foregroundColor(p.secondaryText)
+                            Text(snippet.text).font(.system(size: 16)).lineLimit(2).minimumScaleFactor(0.6)
                         }
-                        .buttonStyle(KeyCapButtonStyle(radius: 8))
+                        .padding(8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(KeyCapButtonStyle(radius: 8))
+                }
+            }
+            .padding(8)
+            Text("Tap a snippet to type it. Add or edit snippets in the Science Keyboard app.")
+                .font(.system(size: 11))
+                .foregroundColor(p.secondaryText)
+                .padding(.bottom, 8)
+        }
+    }
+}
+
+// MARK: - Calculator
+
+struct CalculatorPanel: View {
+    @ObservedObject var state: KeyboardState
+    let pad: Bool
+    @Environment(\.colorScheme) private var scheme
+
+    private let rows: [[(label: String, input: String)]] = [
+        [("sin", "sin("), ("cos", "cos("), ("tan", "tan("), ("ln", "ln("), ("log", "log("), ("√", "√("), ("xʸ", "^"), ("(", "("), (")", ")")],
+        [("sin⁻¹", "asin("), ("cos⁻¹", "acos("), ("tan⁻¹", "atan("), ("7", "7"), ("8", "8"), ("9", "9"), ("÷", "÷"), ("π", "π"), ("⌫", "⌫")],
+        [("x²", "²"), ("x³", "³"), ("n!", "!"), ("4", "4"), ("5", "5"), ("6", "6"), ("×", "×"), ("e", "e"), ("AC", "AC")],
+        [("ans", "ans"), ("×10ⁿ", "E"), ("%", "%"), ("1", "1"), ("2", "2"), ("3", "3"), ("−", "−"), ("ℏ", "ℏ"), ("=", "=")],
+        [("c", "c"), ("Nₐ", "NA"), ("R", "R"), ("0", "0"), (".", "."), (",", ","), ("+", "+"), ("h", "h"), ("G", "G")],
+    ]
+
+    var body: some View {
+        let p = KeyPalette(scheme)
+        VStack(spacing: 5) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(state.calcInput.isEmpty ? "0" : state.calcInput)
+                    .font(.system(size: 24, design: .rounded))
+                    .foregroundColor(p.text)
+                    .lineLimit(1)
+                    .truncationMode(.head)
+                    .minimumScaleFactor(0.5)
+                Spacer(minLength: 8)
+                Text(resultText)
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                    .foregroundColor(isError ? .orange : p.text)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+            }
+            .padding(.horizontal, 12)
+            .frame(height: 34)
+            HStack(spacing: 6) {
+                SmallButton(title: state.degrees ? "DEG" : "RAD") { state.degrees.toggle() }
+                SmallButton(title: "From text", icon: "text.cursor") { state.calcFromDocument() }
+                Spacer(minLength: 4)
+                SmallButton(title: "Paste result", icon: "arrow.down.doc", selected: true) { state.calcInsert(.result) }
+                SmallButton(title: "Paste equation") { state.calcInsert(.equation) }
+                SmallButton(title: "Paste ×10ⁿ") { state.calcInsert(.scientific) }
+            }
+            .padding(.horizontal, 8)
+            VStack(spacing: 4) {
+                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                    HStack(spacing: 4) {
+                        ForEach(Array(row.enumerated()), id: \.offset) { _, key in
+                            Button {
+                                state.calcPress(key.input)
+                            } label: {
+                                Text(key.label)
+                                    .font(.system(size: pad ? 18 : 15))
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.5)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            }
+                            .buttonStyle(KeyCapButtonStyle(kind: isDigit(key.input) ? .letter : .function,
+                                                           selected: key.input == "=", radius: 6))
+                        }
                     }
                 }
-                .padding(8)
-                Text("Add or edit snippets in the Science Keyboard app.")
-                    .font(.system(size: 11))
-                    .foregroundColor(p.secondaryText)
-                    .padding(.bottom, 8)
             }
+            .padding(.horizontal, 6)
+            .padding(.bottom, 6)
+        }
+        .padding(.top, 4)
+    }
+
+    private func isDigit(_ s: String) -> Bool { s.count == 1 && (s.first?.isNumber ?? false || s == ".") }
+
+    private var isError: Bool {
+        if case .failure = state.calcEvaluate(), !state.calcInput.isEmpty { return true }
+        return false
+    }
+
+    private var resultText: String {
+        guard !state.calcInput.isEmpty else { return "ans = \(NumberFormat.general(state.calcAns))" }
+        switch state.calcEvaluate() {
+        case .success(let d): return "= \(NumberFormat.general(d))"
+        case .failure(let e): return e.localizedDescription
         }
     }
 }
@@ -642,81 +909,12 @@ struct ToolsPanel: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PanelHeader(state: state, title: "Tools", tabs: ["Calculator", "Convert", "Hex", "Cursor"], tabKey: "tools")
+            PanelHeader(state: state, tabs: ["Convert", "Unicode hex", "Cursor"], tabKey: "tools")
             switch state.tabs["tools"] ?? 0 {
-            case 1: ConvertTool(state: state)
-            case 2: HexTool(state: state)
-            case 3: CursorTool(state: state)
-            default: CalculatorTool(state: state)
+            case 1: HexTool(state: state)
+            case 2: CursorTool(state: state)
+            default: ConvertTool(state: state)
             }
-        }
-    }
-}
-
-struct CalculatorTool: View {
-    @ObservedObject var state: KeyboardState
-    @Environment(\.colorScheme) private var scheme
-
-    private let rows: [[(label: String, input: String)]] = [
-        [("sin", "sin("), ("cos", "cos("), ("tan", "tan("), ("ln", "ln("), ("log", "log("), ("√", "√("), ("xʸ", "^"), ("(", "("), (")", ")")],
-        [("sin⁻¹", "asin("), ("cos⁻¹", "acos("), ("tan⁻¹", "atan("), ("7", "7"), ("8", "8"), ("9", "9"), ("÷", "÷"), ("π", "π"), ("⌫", "⌫")],
-        [("x²", "²"), ("x³", "³"), ("n!", "!"), ("4", "4"), ("5", "5"), ("6", "6"), ("×", "×"), ("e", "e"), ("AC", "AC")],
-        [("ans", "ans"), ("×10ⁿ", "E"), ("%", "%"), ("1", "1"), ("2", "2"), ("3", "3"), ("−", "−"), ("ℏ", "ℏ"), ("=", "=")],
-        [("Sci ⏎", "Sci"), ("c", "c"), ("Nₐ", "NA"), ("0", "0"), (".", "."), (",", ","), ("+", "+"), ("⏎", "Ins"), ("= ⏎", "Ins=")],
-    ]
-
-    var body: some View {
-        let p = KeyPalette(scheme)
-        VStack(spacing: 4) {
-            HStack {
-                Button(state.degrees ? "DEG" : "RAD") { state.degrees.toggle() }
-                    .font(.system(size: 12, weight: .semibold))
-                    .buttonStyle(.plain)
-                Spacer()
-                VStack(alignment: .trailing, spacing: 0) {
-                    Text(state.calcInput.isEmpty ? "0" : state.calcInput)
-                        .font(.system(size: 18, design: .monospaced))
-                        .foregroundColor(p.text)
-                        .lineLimit(1)
-                        .truncationMode(.head)
-                    Text(resultText)
-                        .font(.system(size: 14, design: .monospaced))
-                        .foregroundColor(p.secondaryText)
-                        .lineLimit(1)
-                }
-            }
-            .padding(.horizontal, 10)
-            VStack(spacing: 4) {
-                ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
-                    HStack(spacing: 4) {
-                        ForEach(Array(row.enumerated()), id: \.offset) { _, key in
-                            Button {
-                                state.calcPress(key.input)
-                            } label: {
-                                Text(key.label)
-                                    .font(.system(size: 16))
-                                    .lineLimit(1)
-                                    .minimumScaleFactor(0.5)
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            }
-                            .buttonStyle(KeyCapButtonStyle(kind: isDigit(key.input) ? .letter : .function,
-                                                           selected: key.input.hasPrefix("Ins") || key.input == "Sci", radius: 6))
-                        }
-                    }
-                }
-            }
-            .padding(.horizontal, 6)
-            .padding(.bottom, 4)
-        }
-    }
-
-    private func isDigit(_ s: String) -> Bool { s.count == 1 && (s.first?.isNumber ?? false || s == ".") }
-
-    private var resultText: String {
-        guard !state.calcInput.isEmpty else { return "ans = \(NumberFormat.general(state.calcAns))" }
-        switch state.calcEvaluate() {
-        case .success(let d): return "= \(NumberFormat.general(d))"
-        case .failure(let e): return e.localizedDescription
         }
     }
 }
@@ -736,6 +934,10 @@ struct ConvertTool: View {
                 guard let v = try? e.evaluate(text) else { return text }
                 return "\(text) = \(v.text)"
             }),
+            ("Molar mass", { text in
+                guard case .success(let r) = MolarMass.report(text) else { return text }
+                return r.equation(.molar, .precise, .dot, .superscript)
+            }),
             ("Plain text (NFKC)", { $0.precomposedStringWithCompatibilityMapping }),
             ("UPPERCASE", { $0.uppercased() }),
             ("lowercase", { $0.lowercased() }),
@@ -752,7 +954,7 @@ struct ConvertTool: View {
     var body: some View {
         VStack(spacing: 4) {
             HStack {
-                Text("Applies to the selection, or else to the")
+                Text("Converts the selection, or else the")
                     .font(.system(size: 12))
                     .foregroundColor(.secondary)
                 SegmentTabs(titles: ["last word", "whole line"], selection: Binding(
@@ -877,34 +1079,6 @@ struct CursorTool: View {
             Text("Tip: drag along the space bar to move the cursor like a trackpad.")
                 .font(.system(size: 11))
                 .foregroundColor(.secondary)
-        }
-    }
-}
-
-// MARK: - All Unicode
-
-struct UnicodePanel: View {
-    @ObservedObject var state: KeyboardState
-
-    var body: some View {
-        VStack(spacing: 0) {
-            PanelHeader(state: state, title: "All Unicode")
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 4) {
-                    ForEach(Array(SymbolCatalog.blocks.enumerated()), id: \.offset) { i, block in
-                        BarChip(text: block.name, selected: state.unicodeBlock == i) {
-                            state.unicodeBlock = i
-                        }
-                    }
-                }
-                .padding(.horizontal, 8)
-            }
-            .frame(height: 36)
-            let block = SymbolCatalog.blocks[min(state.unicodeBlock, SymbolCatalog.blocks.count - 1)]
-            SymbolGrid(state: state, sections: [
-                SymbolSection(id: block.name, title: "\(block.name) · U+\(String(format: "%04X", block.range.lowerBound))–U+\(String(format: "%04X", block.range.upperBound))",
-                              items: state.blockItems(state.unicodeBlock)),
-            ])
         }
     }
 }
