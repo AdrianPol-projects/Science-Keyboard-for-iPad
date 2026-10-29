@@ -1,0 +1,71 @@
+name: Build Notes app
+
+on:
+  push:
+    paths:
+      - 'Notes/**'
+      - 'Shared/**'
+      - '.github/workflows/notes.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Notes IPA
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select newest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)
+          echo "Using $XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project Notes/FSNotes.xcodeproj \
+            -scheme "FSNotes iOS" \
+            -skipPackagePluginValidation -skipMacroValidation
+
+      - name: Build (unsigned)
+        run: |
+          set +e
+          xcodebuild \
+            -project Notes/FSNotes.xcodeproj \
+            -scheme "FSNotes iOS" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            -skipPackagePluginValidation -skipMacroValidation \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM="" \
+            build > build.log 2>&1
+          status=$?
+          echo "::group::Compiler errors"
+          grep -E "error:" build.log | sort -u | head -200
+          echo "::endgroup::"
+          tail -n 40 build.log
+          exit $status
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p Payload
+          cp -R "build/Build/Products/Release-iphoneos/FSNotes iOS.app" Payload/
+          ls -la "Payload/FSNotes iOS.app/PlugIns" || true
+          zip -qry ScienceNotes-unsigned.ipa Payload
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScienceNotes-unsigned
+          path: ScienceNotes-unsigned.ipa
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: notes-build-log
+          path: build.log

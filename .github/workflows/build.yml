@@ -2,6 +2,9 @@ name: Build iOS app
 
 on:
   push:
+    paths-ignore:
+      - 'Notes/**'
+      - '.github/workflows/notes.yml'
   pull_request:
   workflow_dispatch:
 
