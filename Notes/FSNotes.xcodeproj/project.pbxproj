@@ -7,6 +7,18 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2DEB1C0E9990B3DDEDD42DDD /* SNToolkit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 775FFDC6F4F85DDCB2D394FC /* SNToolkit.swift */; };
+		2FC4EE996D1AF3C407D43C55 /* SNCaptureTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE4D811D28CC46093E4D6A04 /* SNCaptureTools.swift */; };
+		BE2F9F1D03CB294D20D2B8C7 /* SNScienceTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E8935A3E73BBD19716E7C3B /* SNScienceTools.swift */; };
+		5849431AD1B898AAC786B29B /* SNStudyTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A69342D7C7320398F4ECA81 /* SNStudyTools.swift */; };
+		4E543DB0E24565303D4CF061 /* SNWritingTools.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0AC2E8EC4BEB0CB5163B14B /* SNWritingTools.swift */; };
+		47946B02117B73EF5D0D411E /* TextTransforms.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2FF172D824CD38B9A05CBA4 /* TextTransforms.swift */; };
+		16576406C72EEAD3F07C1F86 /* Elements.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD8B8BBCE1630F96267CD4A0 /* Elements.swift */; };
+		026B57A8A6D4FE1F1EA9836B /* Expression.swift in Sources */ = {isa = PBXBuildFile; fileRef = 267BF4D21C16D7ED8B2C546F /* Expression.swift */; };
+		7EC22E17E4CE2A4211E53038 /* Converters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9283CB06A5DB44D84E8123EB /* Converters.swift */; };
+		51A2D4091E4FE1C37B626862 /* MolarMass.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38CA5C498D2BBA129856D70A /* MolarMass.swift */; };
+		AD7AA811E78B4903E0A71ED7 /* SymbolCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4422BFB1CEEB5B0A12FEC3BB /* SymbolCatalog.swift */; };
+		9060DAA6010F2D657A1F31A8 /* Presets.swift in Sources */ = {isa = PBXBuildFile; fileRef = A963204D07C92BC0F6C382F4 /* Presets.swift */; };
 		1102DDB12EE4C280005029A6 /* EditTextView+Complete.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1102DDB02EE4C277005029A6 /* EditTextView+Complete.swift */; };
 		1102DDB22EE4C280005029A6 /* EditTextView+Complete.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1102DDB02EE4C277005029A6 /* EditTextView+Complete.swift */; };
 		110BE0112EE86B4A00C5E456 /* Clojure.swift in Sources */ = {isa = PBXBuildFile; fileRef = 110BE0102EE86B4600C5E456 /* Clojure.swift */; };
@@ -923,6 +935,18 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		775FFDC6F4F85DDCB2D394FC /* SNToolkit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SNToolkit.swift; sourceTree = "<group>"; };
+		FE4D811D28CC46093E4D6A04 /* SNCaptureTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SNCaptureTools.swift; sourceTree = "<group>"; };
+		7E8935A3E73BBD19716E7C3B /* SNScienceTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SNScienceTools.swift; sourceTree = "<group>"; };
+		4A69342D7C7320398F4ECA81 /* SNStudyTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SNStudyTools.swift; sourceTree = "<group>"; };
+		D0AC2E8EC4BEB0CB5163B14B /* SNWritingTools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SNWritingTools.swift; sourceTree = "<group>"; };
+		A2FF172D824CD38B9A05CBA4 /* TextTransforms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Shared/TextTransforms.swift"; sourceTree = SOURCE_ROOT; };
+		FD8B8BBCE1630F96267CD4A0 /* Elements.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Shared/Elements.swift"; sourceTree = SOURCE_ROOT; };
+		267BF4D21C16D7ED8B2C546F /* Expression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Shared/Expression.swift"; sourceTree = SOURCE_ROOT; };
+		9283CB06A5DB44D84E8123EB /* Converters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Shared/Converters.swift"; sourceTree = SOURCE_ROOT; };
+		38CA5C498D2BBA129856D70A /* MolarMass.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Shared/MolarMass.swift"; sourceTree = SOURCE_ROOT; };
+		4422BFB1CEEB5B0A12FEC3BB /* SymbolCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Shared/SymbolCatalog.swift"; sourceTree = SOURCE_ROOT; };
+		A963204D07C92BC0F6C382F4 /* Presets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "../Shared/Presets.swift"; sourceTree = SOURCE_ROOT; };
 		1102DDB02EE4C277005029A6 /* EditTextView+Complete.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EditTextView+Complete.swift"; sourceTree = "<group>"; };
 		110BE0102EE86B4600C5E456 /* Clojure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Clojure.swift; sourceTree = "<group>"; };
 		110BE0142EE8C1C600C5E456 /* Html.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Html.swift; sourceTree = "<group>"; };
@@ -1325,6 +1349,33 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0A617A1EC9148007B59343D4 /* ScienceNotes */ = {
+			isa = PBXGroup;
+			children = (
+				775FFDC6F4F85DDCB2D394FC,
+				FE4D811D28CC46093E4D6A04,
+				7E8935A3E73BBD19716E7C3B,
+				4A69342D7C7320398F4ECA81,
+				D0AC2E8EC4BEB0CB5163B14B,
+			);
+			name = "ScienceNotes";
+			path = ScienceNotes;
+			sourceTree = "<group>";
+		};
+		2E50CBCAB0EB3716DB7D5A74 /* Shared (Science Keyboard) */ = {
+			isa = PBXGroup;
+			children = (
+				A2FF172D824CD38B9A05CBA4,
+				FD8B8BBCE1630F96267CD4A0,
+				267BF4D21C16D7ED8B2C546F,
+				9283CB06A5DB44D84E8123EB,
+				38CA5C498D2BBA129856D70A,
+				4422BFB1CEEB5B0A12FEC3BB,
+				A963204D07C92BC0F6C382F4,
+			);
+			name = "Shared (Science Keyboard)";
+			sourceTree = "<group>";
+		};
 		111013172EC9B46800B6CF1B /* SourceCodePro */ = {
 			isa = PBXGroup;
 			children = (
@@ -1728,6 +1779,8 @@
 		D7679387201F21F5000F7BBF /* FSNotes iOS */ = {
 			isa = PBXGroup;
 			children = (
+				0A617A1EC9148007B59343D4 /* ScienceNotes */,
+				2E50CBCAB0EB3716DB7D5A74 /* Shared (Science Keyboard) */,
 				11C23F022EDC486E0064C5B5 /* Icons */,
 				D7F6CFEE2056ABDB008C584A /* Preferences */,
 				D7ED3FFC20CD0ADE001438EE /* Extensions */,
@@ -2430,6 +2483,18 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2DEB1C0E9990B3DDEDD42DDD /* SNToolkit.swift in Sources */,
+				2FC4EE996D1AF3C407D43C55 /* SNCaptureTools.swift in Sources */,
+				BE2F9F1D03CB294D20D2B8C7 /* SNScienceTools.swift in Sources */,
+				5849431AD1B898AAC786B29B /* SNStudyTools.swift in Sources */,
+				4E543DB0E24565303D4CF061 /* SNWritingTools.swift in Sources */,
+				47946B02117B73EF5D0D411E /* TextTransforms.swift in Sources */,
+				16576406C72EEAD3F07C1F86 /* Elements.swift in Sources */,
+				026B57A8A6D4FE1F1EA9836B /* Expression.swift in Sources */,
+				7EC22E17E4CE2A4211E53038 /* Converters.swift in Sources */,
+				51A2D4091E4FE1C37B626862 /* MolarMass.swift in Sources */,
+				AD7AA811E78B4903E0A71ED7 /* SymbolCatalog.swift in Sources */,
+				9060DAA6010F2D657A1F31A8 /* Presets.swift in Sources */,
 				D70E9E012901AEB600A3C634 /* DiffEntry.swift in Sources */,
 				D70E9DF42901AEA800A3C634 /* Commit.swift in Sources */,
 				D70E9E172901AEF300A3C634 /* Tags.swift in Sources */,
@@ -3162,7 +3227,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 7.4.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "co.fluder.mobile.FSNotes-iOS.FSNotes-iOS-Share";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.adrianpol.ScienceNotes.Share";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -3196,7 +3261,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 7.4.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "co.fluder.mobile.FSNotes-iOS.FSNotes-iOS-Share";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.adrianpol.ScienceNotes.Share";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -3234,7 +3299,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 7.4.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "co.fluder.mobile.FSNotes-iOS";
+				PRODUCT_BUNDLE_IDENTIFIER = com.adrianpol.ScienceNotes;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -3274,7 +3339,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 7.4.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "co.fluder.mobile.FSNotes-iOS";
+				PRODUCT_BUNDLE_IDENTIFIER = com.adrianpol.ScienceNotes;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE = "";
 				PROVISIONING_PROFILE_SPECIFIER = "";

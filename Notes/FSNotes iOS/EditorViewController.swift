@@ -222,7 +222,9 @@ class EditorViewController: UIViewController,
 
         navigationItem.rightBarButtonItems = [
             UIBarButtonItem(systemImageName: "ellipsis.circle", menu: menu),
-            previewBarItem
+            previewBarItem,
+            // Science Notes toolkit.
+            UIBarButtonItem(systemImageName: "square.grid.2x2", target: self, selector: #selector(openScienceToolkit))
         ]
     }
 
@@ -801,6 +803,9 @@ class EditorViewController: UIViewController,
         let unindentButton = UIBarButtonItem(systemImageName: "decrease.indent", target: self, selector: #selector(EditorViewController.unIndentPressed))
         items.append(unindentButton)
 
+        // Science Notes: sketch, scan, calculator and toolkit buttons.
+        items += scienceToolbarItems()
+
         self.undoBarButton = UIBarButtonItem(systemImageName: "arrow.uturn.backward", target: self, selector: #selector(EditorViewController.undoPressed))
         items.append(self.undoBarButton!)
 
@@ -889,6 +894,9 @@ class EditorViewController: UIViewController,
         let indentLeftImage = UIImage(named: "toolbarIndentLeft")?.resize(maxWidthHeight: 25)
         let unindentButton = UIBarButtonItem(image: indentLeftImage, landscapeImagePhone: nil, style: .done, target: self, action: #selector(EditorViewController.unIndentPressed))
         items.append(unindentButton)
+
+        // Science Notes: sketch, scan, calculator and toolkit buttons.
+        items += scienceToolbarItems()
 
         let undoImage = UIImage(named: "undo")?.resize(maxWidthHeight: 25)
         let undoButton = UIBarButtonItem(image: undoImage, landscapeImagePhone: nil, style: .done, target: self, action: #selector(EditorViewController.undoPressed))
